@@ -14,8 +14,8 @@ flowchart LR
     end
 
     subgraph DC["docker compose"]
-        W["web<br/>nginx: static front + /api proxy<br/>:80 → APP_PORT"]
-        API["backend<br/>Fastify API :3000"]
+        W["web<br/>nginx: static front + /api proxy<br/>:80 → APP_PORT (9292)"]
+        API["backend<br/>Fastify API :3000<br/>→ API_PORT (127.0.0.1:9191)"]
         DB[("db<br/>PostgreSQL 17")]
     end
 
@@ -28,7 +28,7 @@ flowchart LR
     API --> DB
 ```
 
-- **web** (nginx) is the only service exposed. It serves the built React app and proxies `/api/*` to the backend. In the browser, the front and the API share one origin: there is no CORS and the refresh cookie stays same-site.
+- **web** (nginx, host port 9292 by default) is what clients use. It serves the built React app and proxies `/api/*` to the backend. The backend is also published on 9191, bound to the host's loopback by default, for a reverse proxy or tools on the host. In the browser, the front and the API share one origin: there is no CORS and the refresh cookie stays same-site.
 - **backend** is a stateless REST API. It runs database migrations at startup (`prisma migrate deploy`).
 - **db** is PostgreSQL with a named volume (`db-data`).
 - The **Android app** is the same React build packaged by Capacitor. Its WebView origin is `https://localhost`, so it calls the server across origins. The server allows this through `CORS_ORIGINS`.

@@ -76,16 +76,19 @@ describe('registration and login', () => {
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('AUTH-1: sign-up can be disabled', async () => {
+  it('AUTH-1: sign-up can be disabled, and /api/health says so', async () => {
+    expect((await app.inject({ method: 'GET', url: '/api/health' })).json().registration).toBe(true);
     const closed = await createTestApp({ ALLOW_REGISTRATION: 'false' });
     const res = await closed.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
       payload: { username: 'late', password: 'password123' },
     });
+    const health = await closed.inject({ method: 'GET', url: '/api/health' });
     await closed.close();
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('REGISTRATION_DISABLED');
+    expect(health.json()).toMatchObject({ status: 'ok', name: 'Self-Notes', registration: false });
   });
 
   it('AUTH-2: usernames are unique and case-insensitive (stored lowercase)', async () => {

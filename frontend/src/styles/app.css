@@ -1145,6 +1145,12 @@ textarea:focus-visible {
   font-weight: 400;
 }
 
+/* AUTH-1: shown instead of the sign-up form when the server closed sign-up. */
+.auth-closed {
+  margin: 0;
+  text-align: center;
+}
+
 .auth-footer {
   margin: 0;
   text-align: center;

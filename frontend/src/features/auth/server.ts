@@ -15,7 +15,8 @@ export function normalizeServerUrl(input: string): string | null {
   }
 }
 
-export type ServerCheck = { ok: true; version: string } | { ok: false; reason: string };
+/** `registration`: false when the server closed sign-up (AUTH-1, ALLOW_REGISTRATION=false). */
+export type ServerCheck = { ok: true; version: string; registration: boolean } | { ok: false; reason: string };
 
 /** GET <url>/api/health must answer { name: "Self-Notes" }. */
 export async function checkServer(url: string, signal?: AbortSignal): Promise<ServerCheck> {
@@ -29,10 +30,16 @@ export async function checkServer(url: string, signal?: AbortSignal): Promise<Se
         "Can't reach this server. Check the address. If the server is on another domain, its CORS_ORIGINS setting must allow this app.",
     };
   }
-  const body = (await response.json().catch(() => null)) as { name?: string; version?: string; status?: string } | null;
+  const body = (await response.json().catch(() => null)) as {
+    name?: string;
+    version?: string;
+    status?: string;
+    registration?: boolean;
+  } | null;
   if (body?.name !== 'Self-Notes') return { ok: false, reason: 'This address does not answer like a Self-Notes server.' };
   if (body.status !== 'ok') return { ok: false, reason: 'The server is up, but its database is not reachable.' };
-  return { ok: true, version: body.version ?? '?' };
+  // Servers older than this field always allowed sign-up.
+  return { ok: true, version: body.version ?? '?', registration: body.registration !== false };
 }
 
 export function displayHost(url: string): string {

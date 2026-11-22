@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { displayHost, normalizeServerUrl } from './server';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { checkServer, displayHost, normalizeServerUrl } from './server';
 
 describe('AUTH-6: server URL', () => {
   it('normalizes what users type', () => {
@@ -18,5 +18,23 @@ describe('AUTH-6: server URL', () => {
   it('shows a short host', () => {
     expect(displayHost('https://notes.example.com')).toBe('notes.example.com');
     expect(displayHost('http://localhost:8080/notes')).toBe('localhost:8080/notes');
+  });
+});
+
+describe('AUTH-1 / AUTH-6: checkServer', () => {
+  const answer = (body: unknown) =>
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('reads whether sign-up is open (older servers: open)', async () => {
+    answer({ status: 'ok', name: 'Self-Notes', version: '0.1.0', registration: false });
+    expect(await checkServer('https://notes.test')).toEqual({ ok: true, version: '0.1.0', registration: false });
+    answer({ status: 'ok', name: 'Self-Notes', version: '0.0.9' });
+    expect(await checkServer('https://notes.test')).toEqual({ ok: true, version: '0.0.9', registration: true });
+  });
+
+  it('rejects other servers', async () => {
+    answer({ status: 'ok', name: 'Something else' });
+    expect(await checkServer('https://notes.test')).toMatchObject({ ok: false });
   });
 });

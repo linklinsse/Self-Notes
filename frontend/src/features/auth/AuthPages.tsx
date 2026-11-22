@@ -3,18 +3,26 @@ import { Link } from 'react-router';
 import { isApiError } from '../../api/errors';
 import { useAuth } from '../../auth/AuthProvider';
 import { Button, ErrorNote, Field } from '../../components/ui';
+import type { ServerCheck } from './server';
 import { ServerField } from './ServerField';
 import { USERNAME_HINT, usernameInputProps } from './username';
 
-function AuthLayout({ title, children, footer }: { title: string; children: ReactNode; footer: ReactNode }) {
+/** AUTH-1: sign-up is offered only when the chosen server allows it (unknown: offered). */
+type Render = ReactNode | ((registrationOpen: boolean) => ReactNode);
+
+function AuthLayout({ title, children, footer }: { title: string; children: Render; footer: Render }) {
+  const [check, setCheck] = useState<ServerCheck | null>(null);
+  const registrationOpen = !check?.ok || check.registration;
+  const render = (part: Render) => (typeof part === 'function' ? part(registrationOpen) : part);
+  const end = render(footer);
   return (
     <main className="auth-page">
       <div className="auth-card">
         <div className="brand brand-large">Self-Notes</div>
         <h1>{title}</h1>
-        <ServerField />
-        {children}
-        <p className="auth-footer">{footer}</p>
+        <ServerField onCheck={setCheck} />
+        {render(children)}
+        {end && <p className="auth-footer">{end}</p>}
       </div>
     </main>
   );
@@ -51,10 +59,12 @@ export function LoginPage() {
   return (
     <AuthLayout
       title="Sign in"
-      footer={
-        <>
-          No account yet? <Link to="/register">Create one</Link>
-        </>
+      footer={(registrationOpen) =>
+        registrationOpen && (
+          <>
+            No account yet? <Link to="/register">Create one</Link>
+          </>
+        )
       }
     >
       <form className="form" onSubmit={submit}>
@@ -111,32 +121,40 @@ export function RegisterPage() {
         </>
       }
     >
-      <form className="form" onSubmit={submit}>
-        <Field
-          label="Username"
-          autoComplete="username"
-          required
-          maxLength={32}
-          hint={USERNAME_HINT}
-          {...usernameInputProps}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <Field
-          label="Password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={8}
-          hint="At least 8 characters."
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {error && <ErrorNote>{error}</ErrorNote>}
-        <Button type="submit" variant="primary" busy={busy} className="btn-block">
-          Create account
-        </Button>
-      </form>
+      {(registrationOpen) =>
+        !registrationOpen ? (
+          <p className="auth-closed muted">
+            Sign-up is closed on this server. Ask its administrator for an account, or choose another server above.
+          </p>
+        ) : (
+          <form className="form" onSubmit={submit}>
+            <Field
+              label="Username"
+              autoComplete="username"
+              required
+              maxLength={32}
+              hint={USERNAME_HINT}
+              {...usernameInputProps}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <Field
+              label="Password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              hint="At least 8 characters."
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {error && <ErrorNote>{error}</ErrorNote>}
+            <Button type="submit" variant="primary" busy={busy} className="btn-block">
+              Create account
+            </Button>
+          </form>
+        )
+      }
     </AuthLayout>
   );
 }

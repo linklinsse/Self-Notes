@@ -17,7 +17,7 @@ This document defines **what** Self-Notes does. Requirement IDs (`NOTE-3`, `SHAR
 
 | ID | Requirement |
 |----|-------------|
-| AUTH-1 | A visitor can create an account with a **username** and a **password** (minimum 8 characters). No email is asked. A username has 3 to 32 characters: letters, digits, dot, dash or underscore, starting with a letter or a digit. It is the only name the app shows. Sign-up can be disabled server-wide (`ALLOW_REGISTRATION=false`). |
+| AUTH-1 | A visitor can create an account with a **username** and a **password** (minimum 8 characters). No email is asked. A username has 3 to 32 characters: letters, digits, dot, dash or underscore, starting with a letter or a digit. It is the only name the app shows. Sign-up can be disabled server-wide (`ALLOW_REGISTRATION=false`); the login page then no longer offers to create an account, and the sign-up page says that sign-up is closed. |
 | AUTH-2 | Usernames are unique and case-insensitive (stored lowercase). |
 | AUTH-3 | A user logs in with username and password. Error messages never reveal whether the username exists. |
 | AUTH-4 | **Stay signed in.** A session uses a short-lived access token (15 min) and a refresh token that is replaced on every use. The refresh token expires after **30 days without use**, and every use (opening the app, a widget refresh) restarts that 30-day period. A device used at least once a month therefore never asks to sign in again. A session ends only on logout, password change, 30 days of inactivity, or detected token theft. |
@@ -140,7 +140,7 @@ Home-screen widgets in the APK. They are native Android code (not the WebView) a
 
 | ID | Requirement |
 |----|-------------|
-| NFR-1 | The whole server side runs with `docker compose up` (database, API, web). Only the web port is exposed. |
+| NFR-1 | The whole server side runs with `docker compose up` (database, API, web). The web port (default 9292) serves the app and the API; the API's own port (default 9191) is bound to the host's loopback only, unless configured otherwise. |
 | NFR-2 | Passwords are hashed with argon2id. Refresh tokens are stored only as hashes. Secrets come from environment variables. |
 | NFR-3 | Login, registration and share-link endpoints are rate-limited. Share links cannot be guessed: their token has 256 random bits, and an IP address that asks for too many unknown links (10 in 15 minutes by default) is blocked for 15 minutes, even for valid links. |
 | NFR-4 | All API inputs are validated (zod schemas). All errors use one JSON error format (see [api.md](api.md)). |

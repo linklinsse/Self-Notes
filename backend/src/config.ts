@@ -15,7 +15,7 @@ const EnvSchema = z.object({
   ACCESS_TOKEN_TTL: duration.default('15m'),
   REFRESH_TOKEN_TTL: duration.default('30d'),
   ALLOW_REGISTRATION: bool.default(true),
-  PUBLIC_URL: z.url().default('http://localhost:8080'),
+  PUBLIC_URL: z.url().default('http://localhost:9292'),
   CORS_ORIGINS: z.string().default('https://localhost,http://localhost'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   RATE_LIMIT: bool.default(true),

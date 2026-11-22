@@ -32,6 +32,8 @@ export interface paths {
                             status: "ok" | "degraded";
                             name: string;
                             version: string;
+                            /** @description AUTH-1: false when sign-up is closed (ALLOW_REGISTRATION=false) */
+                            registration: boolean;
                         };
                     };
                 };
@@ -46,6 +48,8 @@ export interface paths {
                             status: "ok" | "degraded";
                             name: string;
                             version: string;
+                            /** @description AUTH-1: false when sign-up is closed (ALLOW_REGISTRATION=false) */
+                            registration: boolean;
                         };
                     };
                 };

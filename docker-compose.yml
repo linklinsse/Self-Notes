@@ -37,12 +37,17 @@ services:
       ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
       REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-30d}
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
-      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:9292}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://localhost,http://localhost}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       TRUST_PROXY: ${TRUST_PROXY:-1}
       SHARE_LINK_MAX_FAILURES: ${SHARE_LINK_MAX_FAILURES:-10}
       SHARE_LINK_BLOCK: ${SHARE_LINK_BLOCK:-15m}
+    ports:
+      # The app reaches the API through "web" (/api). This port is for a proxy or tools on the
+      # host: loopback only by default. A client that reaches the backend without a proxy could
+      # fake its IP (X-Forwarded-For) and escape rate limits; see docs/deployment.md.
+      - "${API_PORT:-127.0.0.1:9191}:3000"
     healthcheck:
       # 127.0.0.1, not localhost: on Alpine "localhost" resolves to ::1 first.
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
@@ -61,7 +66,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "${APP_PORT:-8080}:80"
+      - "${APP_PORT:-9292}:80"
 
 volumes:
   db-data:

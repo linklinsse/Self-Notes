@@ -28,7 +28,7 @@ npm --prefix frontend install
 npm --prefix frontend run dev
 ```
 
-Full stack exactly as in production: `docker compose up -d --build` → http://localhost:8080.
+Full stack exactly as in production: `docker compose up -d --build` → http://localhost:9292 (the API alone is also on http://127.0.0.1:9191).
 
 ## Backend tests
 
@@ -56,7 +56,7 @@ adb install -r frontend/android/app/build/outputs/apk/debug/app-debug.apk
 
 Re-run `android:sync` after every front change: the APK embeds a copy of `frontend/dist`. To pre-fill the server on the login page, build with `VITE_DEFAULT_SERVER_URL=https://notes.example.com` (CI uses the `DEFAULT_SERVER_URL` repository variable). Without it, the login page asks for a server first.
 
-The app runs at the origin `https://localhost`. To reach a local stack from a device or emulator, forward the port and use `http://localhost:<port>` as the server URL (`3000` for `npm run dev` in `backend/`, `8080` for `docker compose up`):
+The app runs at the origin `https://localhost`. To reach a local stack from a device or emulator, forward the port and use `http://localhost:<port>` as the server URL (`3000` for `npm run dev` in `backend/`, `9292` for `docker compose up`):
 
 ```bash
 adb reverse tcp:3000 tcp:3000

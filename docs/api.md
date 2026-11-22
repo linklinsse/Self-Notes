@@ -76,7 +76,7 @@ Base path: **`/api/v1`**. JSON everywhere. In development (`NODE_ENV=development
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET 🌐 | `/api/health` | `{ "status": "ok", "name": "Self-Notes", "version": "0.1.0" }`. Used by the Docker healthcheck, the server URL check on the login page (`name` must be `Self-Notes`) and Settings → About. |
+| GET 🌐 | `/api/health` | `{ "status": "ok", "name": "Self-Notes", "version": "0.1.0", "registration": true }`. Used by the Docker healthcheck, the server URL check on the login page (`name` must be `Self-Notes`; `registration: false` hides sign-up, AUTH-1) and Settings → About. |
 
 ### Auth
 

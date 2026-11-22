@@ -46,6 +46,8 @@ The release pipeline copies the section matching [`VERSION`](VERSION) into the G
 - "Pinned" notes are now **Favorites**, marked with a star (NOTE-11). The API keeps the name `pinned`.
 - The notes grid is aligned in rows, read left to right (it was a column layout).
 - Category colors stand out: vivid preset colors, note cards tinted and outlined with their first category's color, colored category filters.
+- With `ALLOW_REGISTRATION=false`, the login page no longer offers to create an account and the sign-up page says that sign-up is closed; `/api/health` reports `registration` (AUTH-1).
+- Default ports: the web app on **9292** (`APP_PORT`, was 8080), and the API published on **9191** (`API_PORT`, loopback only by default; it was not published).
 
 ### Removed
 - The "Follow device" theme option (THEME-3) and its light/dark theme choices. A saved "system" choice shows the default theme.

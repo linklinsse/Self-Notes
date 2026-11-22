@@ -6,9 +6,11 @@ const HealthSchema = z.object({
   status: z.enum(['ok', 'degraded']),
   name: z.string(),
   version: z.string(),
+  registration: z.boolean().describe('AUTH-1: false when sign-up is closed (ALLOW_REGISTRATION=false)'),
 });
 
 export const healthRoutes: FastifyPluginAsyncZod = async (app) => {
+  const identity = { name: APP_NAME, version: APP_VERSION, registration: app.config.allowRegistration };
   app.get(
     '/health',
     {
@@ -22,9 +24,9 @@ export const healthRoutes: FastifyPluginAsyncZod = async (app) => {
     async (_request, reply) => {
       try {
         await app.prisma.$queryRaw`SELECT 1`;
-        return { status: 'ok' as const, name: APP_NAME, version: APP_VERSION };
+        return { status: 'ok' as const, ...identity };
       } catch {
-        return reply.status(503).send({ status: 'degraded', name: APP_NAME, version: APP_VERSION });
+        return reply.status(503).send({ status: 'degraded', ...identity });
       }
     },
   );

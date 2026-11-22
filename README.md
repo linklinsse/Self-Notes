@@ -50,7 +50,7 @@ Self-Notes/
 ```bash
 cp .env.example .env        # then edit POSTGRES_PASSWORD, JWT_SECRET, PUBLIC_URL
 docker compose up -d --build
-# open http://localhost:8080
+# open http://localhost:9292
 ```
 
 More detail, including the reverse proxy, HTTPS and backups, is in [docs/deployment.md](docs/deployment.md).

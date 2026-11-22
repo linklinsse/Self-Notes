@@ -5,8 +5,11 @@ import { Button } from '../../components/ui';
 import { platform } from '../../platform';
 import { type ServerCheck, checkServer, displayHost, normalizeServerUrl } from './server';
 
-/** AUTH-6: shows the backend URL on the login/register pages and lets the user change it. */
-export function ServerField() {
+/**
+ * AUTH-6: shows the backend URL on the login/register pages and lets the user change it.
+ * `onCheck` receives each successful check (the page hides sign-up when the server closed it).
+ */
+export function ServerField({ onCheck }: { onCheck?: (check: ServerCheck | null) => void }) {
   const [server, setServer] = useState(() => platform.getServerUrl());
   const [status, setStatus] = useState<ServerCheck | null>(null);
   // An APK built without DEFAULT_SERVER_URL starts with no server (AUTH-7): ask for one right away.
@@ -21,6 +24,10 @@ export function ServerField() {
     checkServer(server, controller.signal).then(setStatus, () => {});
     return () => controller.abort();
   }, [server]);
+
+  useEffect(() => {
+    onCheck?.(status);
+  }, [status, onCheck]);
 
   async function save(e: FormEvent) {
     e.preventDefault();
