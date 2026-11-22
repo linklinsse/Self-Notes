@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Native colors used before the web app paints (splash screen, window background, launcher icon).
+    They match the default theme, Blush Noir (frontend/src/themes/palettes.ts). Once the app runs,
+    the user's theme drives the colors (THEME-4).
+-->
+<resources>
+    <color name="brand_background">#0D0D12</color>
+    <color name="brand_icon_background">#1A1A24</color>
+    <color name="brand_accent">#F4B8C8</color>
+</resources>

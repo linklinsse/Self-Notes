@@ -1,0 +1,22 @@
+# Throwaway PostgreSQL for the backend integration tests (data kept in memory).
+#   docker compose -f docker-compose.test.yml up -d
+#   npm --prefix backend test
+#   docker compose -f docker-compose.test.yml down
+name: self-notes-test
+
+services:
+  db-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: selfnotes_test
+      POSTGRES_USER: selfnotes
+      POSTGRES_PASSWORD: selfnotes
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U selfnotes -d selfnotes_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20

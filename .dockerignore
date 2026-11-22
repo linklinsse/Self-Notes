@@ -1,0 +1,17 @@
+# Docker builds use the repository root as context (so Dockerfiles can read VERSION).
+# Keep the context small and free of secrets.
+.git
+.github
+docs
+**/node_modules
+**/dist
+**/build
+**/coverage
+**/.gradle
+frontend/android
+.env
+.env.*
+*.jks
+*.keystore
+*.apk
+*.aab
