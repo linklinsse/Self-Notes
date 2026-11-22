@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The note of frontend/public/favicon.svg (64×64 viewBox), scaled ×1.125 and centered in the
+    108dp adaptive icon canvas, inside its 66dp safe zone. Also used by the splash screen.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="1.125"
+        android:scaleY="1.125"
+        android:translateX="18"
+        android:translateY="18">
+        <path
+            android:pathData="M22,14 H42 A6,6 0 0 1 48,20 V46 A6,6 0 0 1 42,52 H22 A6,6 0 0 1 16,46 V20 A6,6 0 0 1 22,14 Z"
+            android:strokeWidth="4"
+            android:strokeColor="@color/brand_accent" />
+        <path
+            android:pathData="M23,26 H41 M23,34 H41 M23,42 H33"
+            android:strokeWidth="4"
+            android:strokeColor="@color/brand_accent"
+            android:strokeLineCap="round" />
+    </group>
+</vector>

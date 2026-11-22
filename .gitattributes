@@ -1,0 +1,15 @@
+# Normalize line endings (the repo is edited from WSL and Windows)
+* text=auto eol=lf
+
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+gradlew text eol=lf
+
+*.png  binary
+*.jpg  binary
+*.webp binary
+*.ico  binary
+*.jar  binary
+*.jks  binary
+*.keystore binary
+*.apk  binary

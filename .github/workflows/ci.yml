@@ -1,0 +1,163 @@
+# Continuous integration: repository checks + build/test of each module.
+# Module jobs are skipped automatically until the module exists (backend/, frontend/, frontend/android/).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  JAVA_VERSION: "21"
+
+jobs:
+  meta:
+    name: Repository checks
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.detect.outputs.backend }}
+      frontend: ${{ steps.detect.outputs.frontend }}
+      android: ${{ steps.detect.outputs.android }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate VERSION
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error file=VERSION::VERSION must be MAJOR.MINOR.PATCH (got '$version')"
+            exit 1
+          fi
+          IFS=. read -r _ minor patch <<< "$version"
+          if [ "$minor" -gt 99 ] || [ "$patch" -gt 99 ]; then
+            echo "::error file=VERSION::MINOR and PATCH must be <= 99 (Android versionCode = MAJOR*10000 + MINOR*100 + PATCH)"
+            exit 1
+          fi
+          echo "Self-Notes version: $version"
+
+      - name: Validate docker-compose.yml
+        run: docker compose --env-file .env.example config --quiet
+
+      - name: Detect modules
+        id: detect
+        run: |
+          {
+            echo "backend=$([ -f backend/package.json ] && echo true || echo false)"
+            echo "frontend=$([ -f frontend/package.json ] && echo true || echo false)"
+            echo "android=$([ -d frontend/android ] && echo true || echo false)"
+          } >> "$GITHUB_OUTPUT"
+
+  backend:
+    name: Backend
+    needs: meta
+    if: needs.meta.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: selfnotes_test
+          POSTGRES_USER: selfnotes
+          POSTGRES_PASSWORD: selfnotes
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U selfnotes -d selfnotes_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://selfnotes:selfnotes@localhost:5432/selfnotes_test
+      JWT_SECRET: ci-only-not-a-secret
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint --if-present
+      - run: npm run typecheck --if-present
+      - run: npm run test --if-present
+      - run: npm run build
+
+  frontend:
+    name: Frontend
+    needs: meta
+    if: needs.meta.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint --if-present
+      - run: npm run typecheck --if-present
+      - run: npm run test --if-present
+      - run: npm run build
+
+  android:
+    name: Android (debug APK)
+    needs: [meta, frontend]
+    if: needs.meta.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+
+      - name: Build web bundle and sync Capacitor
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Native unit tests and debug APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Self-Notes-debug-${{ github.sha }}
+          path: frontend/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+
+  docker:
+    name: Docker images
+    needs: meta
+    if: needs.meta.outputs.backend == 'true' && needs.meta.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all compose images
+        run: docker compose --env-file .env.example build
