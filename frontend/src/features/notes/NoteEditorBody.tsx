@@ -1,5 +1,8 @@
+import { type ReactNode, useEffect, useState } from 'react';
 import type { DraftController, DraftState, SaveStatus } from './draft';
 import { Icon, type IconName } from '../../components/Icon';
+import { Progress } from '../../components/Progress';
+import { taskProgress } from '../../markdown/tasklist';
 import { Button, ErrorNote } from '../../components/ui';
 import { ChecklistEditor } from './ChecklistEditor';
 import { TextEditor } from './TextEditor';
@@ -18,23 +21,49 @@ export function SaveStatusBadge({ status }: { status: SaveStatus }) {
   return (
     <span className={`save-status is-${status}`} aria-live="polite">
       {icon && <Icon name={icon} size={14} />}
-      {label}
+      <span className="save-status-label">{label}</span>
     </span>
   );
 }
 
-/** Title + content editor, shared by member notes and share-link notes. */
+/** True once the page has scrolled past `threshold` pixels. */
+function useScrolled(threshold: number): boolean {
+  const [scrolled, setScrolled] = useState(() => window.scrollY > threshold);
+  useEffect(() => {
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => setScrolled(window.scrollY > threshold));
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [threshold]);
+  return scrolled;
+}
+
+/**
+ * Title + content editor, shared by member notes and share-link notes.
+ * NOTE-20: the title, `head` (the categories) and a checklist's progress bar stay at the top while
+ * the note scrolls, and the title gets smaller once the page has scrolled.
+ */
 export function NoteEditorBody({
   state,
   ctrl,
   readOnly,
   autoFocusTitle,
+  head,
 }: {
   state: DraftState;
   ctrl: DraftController;
   readOnly: boolean;
   autoFocusTitle?: boolean;
+  head?: ReactNode;
 }) {
+  const compact = useScrolled(24);
+  const progress = state.type === 'list' ? taskProgress(state.content) : null;
   return (
     <article className="editor">
       {state.status === 'conflict' && (
@@ -53,19 +82,23 @@ export function NoteEditorBody({
       )}
       {state.status === 'error' && state.error && <ErrorNote>{state.error}</ErrorNote>}
 
-      <input
-        className="title-input"
-        value={state.title}
-        readOnly={readOnly}
-        placeholder={readOnly ? 'Untitled' : 'Title'}
-        maxLength={200}
-        aria-label="Title"
-        autoFocus={autoFocusTitle}
-        onChange={(e) => ctrl.edit({ title: e.target.value })}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-        }}
-      />
+      <header className={`note-head ${compact ? 'is-compact' : ''}`}>
+        <input
+          className="title-input"
+          value={state.title}
+          readOnly={readOnly}
+          placeholder={readOnly ? 'Untitled' : 'Title'}
+          maxLength={200}
+          aria-label="Title"
+          autoFocus={autoFocusTitle}
+          onChange={(e) => ctrl.edit({ title: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur();
+          }}
+        />
+        {head}
+        {progress && <Progress checked={progress.checked} total={progress.total} className="checklist-progress" />}
+      </header>
 
       {state.type === 'list' ? (
         <ChecklistEditor

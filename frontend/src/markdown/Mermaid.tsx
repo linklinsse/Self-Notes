@@ -8,6 +8,7 @@
 import DOMPurify from 'dompurify';
 import { useEffect, useState } from 'react';
 import type { Theme } from '../themes';
+import { readableTextOn } from '../themes/contrast';
 import { useTheme } from '../themes/ThemeProvider';
 
 let queue: Promise<unknown> = Promise.resolve();
@@ -43,6 +44,24 @@ async function draw(code: string, theme: Theme): Promise<string> {
       pieOuterStrokeColor: theme.border,
       pieTitleTextColor: theme.text1,
       pieLegendTextColor: theme.text1,
+      // Gantt: theme colors, and bar text that stays readable on each fill.
+      sectionBkgColor: theme.bgCard,
+      altSectionBkgColor: theme.bgSurface,
+      sectionBkgColor2: theme.bgCard,
+      taskBkgColor: theme.bgRaised,
+      taskBorderColor: theme.accentDim,
+      taskTextColor: theme.text1,
+      taskTextLightColor: theme.text1,
+      taskTextOutsideColor: theme.text1,
+      activeTaskBkgColor: theme.accentFill,
+      activeTaskBorderColor: theme.accent,
+      doneTaskBkgColor: theme.success,
+      doneTaskBorderColor: theme.success,
+      taskTextDarkColor: readableTextOn(theme.success),
+      critBkgColor: theme.danger,
+      critBorderColor: theme.danger,
+      gridColor: theme.text3,
+      todayLineColor: theme.accent,
     },
   });
   await mermaid.parse(code); // throws a readable syntax error before anything is drawn

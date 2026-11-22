@@ -1,6 +1,5 @@
 import { type CSSProperties, type KeyboardEvent, type PointerEvent, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon';
-import { Progress } from '../../components/Progress';
 import { InlineMarkdown } from '../../markdown/Markdown';
 import {
   type ItemLine,
@@ -182,7 +181,6 @@ export function ChecklistEditor({
 
   return (
     <div className="checklist">
-      <Progress checked={all.filter((l) => l.checked).length} total={all.length} className="checklist-progress" />
       <ul className="check-items" ref={list}>
         {all.map(renderRow)}
       </ul>

@@ -200,8 +200,15 @@ function MemberNoteContent({ note, content, lock }: { note: Note; content: strin
           {readOnly && <span className="badge">Read-only</span>}
           <span className="spacer" />
           {canCancel && (
-            <Button variant="ghost" icon="x" className="cancel-edits" onClick={() => setConfirm('cancel')}>
-              Cancel
+            <Button
+              variant="ghost"
+              icon="x"
+              className="cancel-edits"
+              aria-label="Cancel"
+              title="Cancel the changes"
+              onClick={() => setConfirm('cancel')}
+            >
+              <span className="cancel-edits-label">Cancel</span>
             </Button>
           )}
           {note.locked && <IconButton icon="lock" label="Lock now" onClick={() => void lockNow()} />}
@@ -296,16 +303,18 @@ function MemberNoteContent({ note, content, lock }: { note: Note; content: strin
         ctrl={ctrl}
         readOnly={readOnly}
         autoFocusTitle={focusTitle}
+        head={
+          note.categories.length > 0 && (
+            <div className="chips">
+              {note.categories.map((c) => (
+                <CategoryChip key={c.id} name={c.name} color={c.color} small />
+              ))}
+            </div>
+          )
+        }
       />
 
       <footer className="editor-meta">
-        {note.categories.length > 0 && (
-          <div className="chips">
-            {note.categories.map((c) => (
-              <CategoryChip key={c.id} name={c.name} color={c.color} small />
-            ))}
-          </div>
-        )}
         <p className="muted small">
           {!isOwner && <>Shared by {note.owner.username} · </>}
           Edited {relativeTime(note.updatedAt)}

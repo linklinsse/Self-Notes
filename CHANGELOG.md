@@ -34,7 +34,8 @@ The release pipeline copies the section matching [`VERSION`](VERSION) into the G
 - Checkboxes in text (Markdown) notes can be checked from the preview, without editing, by anyone who may edit the note (NOTE-16).
 - Brute-force protection for share links: an IP that asks for too many unknown links is blocked for a while (`SHARE_LINK_MAX_FAILURES`, `SHARE_LINK_BLOCK`, NFR-3).
 - Table of contents in notes with `[[_TOC_]]` or `[TOC]`, GitLab style, and heading anchors (NOTE-18).
-- Mermaid diagrams in notes (```` ```mermaid ```` blocks), in the theme's colors (NOTE-19).
+- Mermaid diagrams in notes (```` ```mermaid ```` blocks: flowcharts, sequences, pies, Gantt charts…), in the theme's colors (NOTE-19).
+- In a note, the title, the categories (now under the title) and the progress bar stay at the top while scrolling; the title shrinks (NOTE-20).
 - **Notes locked with a password** (NOTE-17): the owner locks a note, changes or removes its password. The content is encrypted on the device (PBKDF2-SHA256 + AES-256-GCM) and the server only stores ciphertext; the grid shows the title only. Members and share links unlock it with the same password. API: `locked` on notes, `INVALID_ENCRYPTED_CONTENT`, `NOTE_LOCKED`.
 - Sort menu on the notes grid (NOTE-9): favorites first (default), last updated, A to Z, or by category. The choice is saved on the account (`preferences.noteSort`). API: `GET /notes?sort=`.
 

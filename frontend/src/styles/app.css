@@ -40,6 +40,8 @@
   --sn-r-xl: 28px;
   --gutter: 16px;
   --content: 1100px;
+  /* Height of the sticky top bar (.topbar-inner min-height + its border), safe area excluded. */
+  --topbar-h: 61px;
   color-scheme: dark;
 }
 
@@ -77,9 +79,10 @@ a {
   color: var(--sn-link);
 }
 
-/* NOTE-18: anchors land below the sticky top bar. */
+/* NOTE-18: anchors land below the sticky top bar and the sticky note title (NOTE-20). */
 .markdown [id^='user-content-'] {
-  scroll-margin-top: 84px;
+  /* The note head shrinks while the page scrolls to the anchor: leave room for that too. */
+  scroll-margin-top: calc(var(--topbar-h) + env(safe-area-inset-top) + 120px);
 }
 
 .markdown .toc {
@@ -819,9 +822,9 @@ textarea:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* In the note itself (editing, read-only, share link): bigger, above the items. */
+/* In the note itself (editing, read-only, share link): in the sticky note head (NOTE-20). */
 .checklist-progress {
-  margin-bottom: 14px;
+  margin: 0;
 }
 
 .checklist-progress .progress-bar {
@@ -1215,6 +1218,28 @@ textarea:focus-visible {
   gap: 16px;
 }
 
+/* NOTE-20: title and categories stay under the top bar; the title shrinks once the page scrolls. */
+.note-head {
+  position: sticky;
+  top: calc(var(--topbar-h) + env(safe-area-inset-top));
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: -8px calc(-1 * var(--gutter)) 0;
+  padding: 8px var(--gutter);
+  background: var(--sn-bg);
+  transition:
+    padding 0.15s,
+    box-shadow 0.15s;
+}
+
+.note-head.is-compact {
+  padding-top: 6px;
+  padding-bottom: 8px;
+  box-shadow: 0 1px 0 var(--sn-border-soft);
+}
+
 .title-input {
   border: none;
   background: transparent;
@@ -1223,6 +1248,12 @@ textarea:focus-visible {
   font-size: var(--sn-fs-xxl);
   line-height: 1.2;
   min-height: 0;
+  transition: font-size 0.15s;
+}
+
+.note-head.is-compact .title-input {
+  font-size: var(--sn-fs-lg);
+  padding: 0;
 }
 
 .title-input:focus-visible {
@@ -1872,6 +1903,16 @@ textarea:focus-visible {
 @media (max-width: 600px) {
   .topbar-inner {
     gap: 4px;
+  }
+
+  /* The editor bar holds up to 8 controls: icons only on phones (labels stay as aria-label). */
+  .cancel-edits-label,
+  .save-status:not(.is-offline, .is-conflict, .is-error) .save-status-label {
+    display: none;
+  }
+
+  .cancel-edits {
+    padding-inline: 10px;
   }
 
   .brand {

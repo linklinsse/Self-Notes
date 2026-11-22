@@ -32,7 +32,7 @@ This document defines **what** Self-Notes does. Requirement IDs (`NOTE-3`, `SHAR
 | NOTE-1 | A user can create a note with a **title** (optional, up to 200 characters) and a **type**: `text` or `list`. |
 | NOTE-2 | Note content is **Markdown** in GitHub Flavored Markdown (GFM): headings, emphasis, links, code, tables, strikethrough and task items. Raw HTML is **not** rendered. Content is limited to 1 MB. |
 | NOTE-3 | A **text** note has a Markdown editor with **Edit** and **Preview** modes. |
-| NOTE-4 | A **list** note is shown as a checklist: add, edit, reorder, delete and **check/uncheck** items. Each item's text may contain inline Markdown. A **progress bar** with "checked/total" shows how much is done, on the note's card and in the note itself (editing, read-only and share links). |
+| NOTE-4 | A **list** note is shown as a checklist: add, edit, reorder, delete and **check/uncheck** items. Each item's text may contain inline Markdown. A **progress bar** with "checked/total" shows how much is done, on the note's card and at the top of the note itself (editing, read-only and share links, NOTE-20). |
 | NOTE-5 | A list note is stored as Markdown task items (`- [ ] item` / `- [x] item`), one per line. Lines that are not task items are kept as they are. |
 | NOTE-6 | Checking or unchecking an item never moves it. Items are reordered by **drag and drop** (a handle on every item, checked or not, mouse and touch). |
 | NOTE-7 | The type can be changed. **Text → list**: each non-empty line that is not already an item becomes an unchecked item. **List → text**: the Markdown is kept as is. |
@@ -48,6 +48,7 @@ This document defines **what** Self-Notes does. Requirement IDs (`NOTE-3`, `SHAR
 | NOTE-17 | **Notes locked with a password.** The owner can lock a note with a password, change it or remove it. The content is **encrypted on the device** (the server and its backups only hold unreadable data); the title stays visible, and the grid shows the title only. Opening the note asks for the password, and so does opening it as a member or through a share link: the same password for everyone. The note stays open until the user leaves it, reloads the app or taps "Lock now". A forgotten password cannot be recovered. Search does not look inside locked notes. |
 | NOTE-18 | **Table of contents**, as in GitLab Flavored Markdown: `[[_TOC_]]` or `[TOC]` alone on a line is replaced by a nested list of links to the note's headings. Headings get GitLab-style anchors (lowercase, punctuation removed, spaces as hyphens, `-1`, `-2`… for repeats), so `[link](#my-heading)` works too. Following such a link scrolls within the note. |
 | NOTE-19 | **Mermaid diagrams**: a fenced code block with the `mermaid` language is drawn as a diagram (flowchart, sequence, pie, Gantt…), in the theme's colors. A diagram with a syntax error shows the error and its source. |
+| NOTE-20 | In a note, the **title, the categories and the checklist progress bar stay at the top** while the content scrolls, and the title gets smaller once the page has scrolled. Categories are shown under the title. On phones, the note's top bar shows icons only. |
 
 ## 4. Categories
 
