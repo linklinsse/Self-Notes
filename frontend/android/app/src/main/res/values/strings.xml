@@ -1,7 +1,30 @@
 <?xml version='1.0' encoding='utf-8'?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Self-Notes</string>
     <string name="title_activity_main">Self-Notes</string>
-    <string name="package_name">app.selfnotes</string>
-    <string name="custom_url_scheme">app.selfnotes</string>
+    <string name="package_name" tools:ignore="UnusedResources">app.selfnotes</string>
+    <string name="custom_url_scheme" tools:ignore="UnusedResources">app.selfnotes</string>
+
+    <!-- Widgets (docs/specification.md §7) -->
+    <string name="widget_notes_label">Notes</string>
+    <string name="widget_notes_description">Your notes, favorites first</string>
+    <string name="widget_notes_by_type_label">Notes by type</string>
+    <string name="widget_notes_by_type_description">Only your lists, or only your text notes</string>
+    <string name="widget_note_label">Note</string>
+    <string name="widget_note_description">One note; check list items right from the home screen</string>
+    <string name="widget_new_note">New note</string>
+    <string name="widget_refresh">Refresh</string>
+    <string name="widget_sign_in">Sign in to Self-Notes</string>
+    <string name="widget_loading">Loading…</string>
+    <string name="widget_unreachable">The server cannot be reached. Tap to try again.</string>
+    <string name="widget_no_notes">No notes</string>
+    <string name="widget_untitled">Untitled</string>
+    <string name="widget_empty_note">This note is empty</string>
+    <string name="widget_locked">Locked with a password. Tap to open it in the app.</string>
+    <string name="widget_locked_short">Locked</string>
+    <string name="widget_favorite">Favorite</string>
+    <string name="widget_unavailable">Note unavailable</string>
+    <string name="widget_pick_note">Pick another note</string>
+    <string name="widget_more">Open the note to see the rest</string>
+    <string name="widget_offline_since">Offline · updated %1$s</string>
 </resources>

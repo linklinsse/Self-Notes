@@ -16,14 +16,17 @@ RUN npm run build \
 
 FROM node:24-alpine
 WORKDIR /app
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl su-exec
 ENV NODE_ENV=production
+# SQLite database. Mount a host folder on /app/db to keep it (docker-compose.yml: ./db).
+ENV DATABASE_URL=file:/app/db/prod.db
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/dist ./dist
 COPY VERSION ./VERSION
-USER node
+COPY backend/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod 755 docker-entrypoint.sh
 EXPOSE 3000
-# Apply pending migrations, then start the API.
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && exec node dist/server.js"]
+# Starts as root only to give /app/db to the "node" user, then runs as "node": see the script.
+ENTRYPOINT ["./docker-entrypoint.sh"]

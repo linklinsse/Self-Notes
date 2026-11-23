@@ -9,7 +9,7 @@ import { loadConfig } from '../config.js';
 const output = process.argv[2] ?? 'openapi.json';
 const config = loadConfig({
   ...process.env,
-  DATABASE_URL: process.env.DATABASE_URL ?? 'postgresql://unused@localhost/unused',
+  DATABASE_URL: process.env.DATABASE_URL ?? 'file:./unused.db', // never opened
   JWT_SECRET: process.env.JWT_SECRET ?? 'openapi-export-only-not-a-real-secret-0000',
   API_DOCS: 'true',
   RATE_LIMIT: 'false',

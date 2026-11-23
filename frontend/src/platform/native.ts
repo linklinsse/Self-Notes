@@ -7,7 +7,7 @@ import { App } from '@capacitor/app';
 import { registerPlugin } from '@capacitor/core';
 import { ApiError, networkError } from '../api/errors';
 import { deepLinkPath } from './deepLinks';
-import type { AccessToken, Platform } from './index';
+import type { AccessToken, Platform, ThemeColors } from './index';
 
 interface SelfNotesNativePlugin {
   getServerUrl(): Promise<{ url?: string }>;
@@ -18,6 +18,10 @@ interface SelfNotesNativePlugin {
   clearSession(options: { revoke: boolean }): Promise<void>;
   /** Bar icons and the background behind the bars (THEME-4). */
   setSystemBars(options: { background: string; dark: boolean }): Promise<void>;
+  /** WIDGET-8. Calls within 2 seconds make one refresh. */
+  refreshWidgets(options: { noteId?: string }): Promise<void>;
+  /** WIDGET-10: CSS colors of the resolved theme. */
+  setWidgetTheme(options: ThemeColors): Promise<void>;
 }
 
 const SelfNotesNative = registerPlugin<SelfNotesNativePlugin>('SelfNotesNative');
@@ -74,7 +78,12 @@ export const nativePlatform: Platform = {
   },
 
   setThemeColors(colors) {
-    SelfNotesNative.setSystemBars(colors).catch(() => {});
+    SelfNotesNative.setSystemBars({ background: colors.background, dark: colors.dark }).catch(() => {});
+    SelfNotesNative.setWidgetTheme(colors).catch(() => {});
+  },
+
+  refreshWidgets() {
+    SelfNotesNative.refreshWidgets({}).catch(() => {});
   },
 
   onDeepLink(open) {

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { insertItem, items, moveItem, parseLines, removeItem, serializeLines, updateItem } from './listModel';
 import { parseTaskItems, taskProgress, textToList, toggleTaskItem } from './tasklist';
+import fixtures from './task-items.fixtures.json';
+
+// The same fixtures run in backend/test/tasklist.test.ts and in the Android widgets' tests.
+describe('task items: shared fixtures', () => {
+  it.each(fixtures.cases)('NOTE-5: $name', ({ content, items }) => {
+    expect(parseTaskItems(content)).toEqual(items);
+  });
+});
 
 // Same cases as backend/test/tasklist.test.ts.
 describe('tasklist (mirror of the backend)', () => {

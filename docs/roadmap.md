@@ -11,7 +11,7 @@
 
 ### M1: Backend core ✅
 - [x] Fastify + TypeScript skeleton, config, logging, error format, `/api/health`
-- [x] Prisma schema and first migration (including the raw SQL: one-owner index, trigram indexes, CHECKs)
+- [x] Prisma schema and first migration (including the raw SQL: one-owner index, CHECKs)
 - [x] Auth: register, login, refresh (rotation, 30-day sliding expiry, reuse detection with a 2-minute grace period), cookie or body token transport, logout, `/me`, password change
 - [x] Notes: CRUD, `version` conflict check, `NoteSummary` previews, item toggle endpoint, search and filters, pin
 - [x] Categories: CRUD, tagging notes
@@ -30,12 +30,12 @@
 - [x] Settings: profile, password, theme, checklist option, categories, about, sign out
 - [x] `frontend/Dockerfile` + nginx config (SPA, `/api` proxy, security headers), full `docker compose up` working
 
-### M3: Sharing UI ✅
+### M3: Sharing UI and end-to-end tests ✅
 - [x] Share dialog: members by username, change role, remove; "Leave note" for members
 - [x] Share links: create (role, expiry), list, copy, revoke
 - [x] Public page `/s/:token` (read and edit, no account)
 - [x] Permission matrix tests (spec §5.3), in the backend
-- [ ] End-to-end browser tests in CI (Playwright). A local smoke run covered the main flows.
+- [x] End-to-end browser tests in CI (Playwright, `e2e/`), against the Docker stack
 
 ### M4: Android APK and first release (0.1.0)
 - [x] Capacitor 8 setup, `appId`, icon and splash
@@ -44,13 +44,14 @@
 - [x] `build.gradle` reads `VERSION`
 - [ ] Keystore and GitHub secrets set up, first **Release APK** run → `v0.1.0` (manual, see [release.md](release.md#signing-keystore-one-time-setup))
 
-### M5: Android widgets (0.2.0)
-- [ ] Glance + WorkManager setup, `WidgetRepository` with a per-widget cache, 30-min refresh worker
-- [ ] **Notes** widget with its configuration (scope, category)
-- [ ] **Notes by type** widget (type, scope, category)
-- [ ] **Note** widget: note picker, simplified Markdown, checkbox toggle (Android 12+), "Note unavailable" state
-- [ ] Signed-out state, theme colors, refresh triggered by the app (`refreshWidgets`)
-- [ ] Locked notes (NOTE-17) show their title and a lock, never their content
+### M5: Android widgets ✅ (in the first release, 0.1.0)
+- [x] Glance + WorkManager setup, per-widget state, 30-min refresh worker
+- [x] **Notes** widget with its configuration (scope, category)
+- [x] **Notes by type** widget (type, scope, category)
+- [x] **Note** widget: note picker, simplified Markdown, checkbox toggle (every Android version), "Note unavailable" state
+- [x] Signed-out state, theme colors, refresh triggered by the app (`refreshWidgets`)
+- [x] Locked notes (NOTE-17) show their title and a lock, never their content
+- [x] JVM tests (Markdown with the shared fixtures, API calls, state changes); checked on an Android 11 emulator
 
 ### Later
 - Offline mode with sync (APK)
@@ -72,6 +73,6 @@
 | Q2 | Should **edit links** require the visitor to log in? | No: anyone holding the link can edit (SHARE-8). The link can be revoked or set to expire. |
 | Q3 | Who can create an account? | Open sign-up, which can be closed with `ALLOW_REGISTRATION=false` |
 | Q4 | Android **application id** (permanent once released) | `app.selfnotes` |
-| Q5 | Tech stack | React + Capacitor / Fastify + Prisma + PostgreSQL (see [architecture.md](architecture.md)). Easy to change until M1 starts. |
+| Q5 | Tech stack | React + Capacitor / Fastify + Prisma + SQLite (see [architecture.md](architecture.md)). PostgreSQL until 2026-11-23: replaced by SQLite, a single file, simpler to host and back up. |
 | Q6 | Session length | Ends after 30 days **without use**, with no absolute maximum. Widgets keep phones signed in (AUTH-4). |
-| Q7 | Widgets in the first APK? | No: widgets come with 0.2.0 (M5), right after the first APK. They can be moved into M4 if they are needed in 0.1.0. |
+| Q7 | Widgets in the first APK? | ✅ Yes: M5 was finished before the first release, so 0.1.0 has the widgets. |

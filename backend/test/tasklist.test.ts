@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   parseTaskItems,
@@ -7,6 +8,18 @@ import {
   textToList,
   toggleTaskItem,
 } from '../src/lib/tasklist.js';
+import type { TaskItem } from '../src/lib/tasklist.js';
+
+// Shared with the frontend and the Android widgets: a checkbox toggled anywhere targets the same item.
+const fixtures = JSON.parse(
+  readFileSync(new URL('../../frontend/src/markdown/task-items.fixtures.json', import.meta.url), 'utf8'),
+) as { cases: { name: string; content: string; items: TaskItem[] }[] };
+
+describe('task items: shared fixtures', () => {
+  it.each(fixtures.cases)('NOTE-5: $name', ({ content, items }) => {
+    expect(parseTaskItems(content)).toEqual(items);
+  });
+});
 
 describe('tasklist', () => {
   const list = '- [ ] Milk\n- [x] Bread\n* [X] Eggs\n1. [ ] **Butter**\nNot an item';

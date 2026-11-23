@@ -4,17 +4,18 @@ The whole server side runs from [`docker-compose.yml`](../docker-compose.yml):
 
 | Service | Image | Role | Exposed |
 |---------|-------|------|---------|
-| `db` | `postgres:17-alpine` | Database, volume `db-data` | no |
-| `backend` | built from `backend/Dockerfile` | REST API on `:3000`. Runs migrations at startup. | `API_PORT` → 3000 (default `127.0.0.1:9191`, host only) |
+| `backend` | built from `backend/Dockerfile` | REST API on `:3000`, with the SQLite database in `/app/db` (the host folder `DB_DIR`, default `./db`). Runs migrations at startup. | `API_PORT` → 3000 (default `127.0.0.1:9191`, host only) |
 | `web` | built from `frontend/Dockerfile` | nginx: serves the front and proxies `/api/*` to `backend` | `APP_PORT` → 80 (default `9292`) |
 
-Startup order is enforced by healthchecks: `db` healthy → `backend` healthy (`/api/health`) → `web`.
+Startup order is enforced by a healthcheck: `backend` healthy (`/api/health`) → `web`.
+
+Compose v2 is required (`docker compose`, from Docker's `docker-compose-plugin` package). The old Python `docker-compose` 1.x cannot read this file.
 
 ## First start
 
 ```bash
 cp .env.example .env
-# edit .env: POSTGRES_PASSWORD, JWT_SECRET (openssl rand -base64 48), PUBLIC_URL
+# edit .env: JWT_SECRET (openssl rand -base64 48), PUBLIC_URL
 docker compose up -d --build
 docker compose ps            # all services should be "healthy"
 docker compose logs -f backend
@@ -29,8 +30,7 @@ Then open `PUBLIC_URL` (default http://localhost:9292) and create the first acco
 | `PUBLIC_URL` | `http://localhost:9292` | Public base URL. Used to build share links (`<PUBLIC_URL>/s/<token>`). Its origin is always allowed by CORS. |
 | `APP_PORT` | `9292` | Host port of the `web` service: the app, and the API under `/api`. |
 | `API_PORT` | `127.0.0.1:9191` | Host port of the `backend` service. The app does not need it. Loopback only by default, for a reverse proxy or tools on the host. `9191` alone opens it on every interface: only do that behind a proxy you control, because a client that reaches the backend directly can fake its IP in `X-Forwarded-For` and escape the rate limits and the share-link brute-force block. |
-| `POSTGRES_DB` / `POSTGRES_USER` | `selfnotes` | Database name and user |
-| `POSTGRES_PASSWORD` | **required** | Database password. Use URL-safe characters only, because it is embedded in `DATABASE_URL`. |
+| `DB_DIR` | `./db` | Host folder of the SQLite database: `prod.db`, plus `prod.db-wal` and `prod.db-shm` while the API runs. Created on first start. At each start the container gives it to the user `node` (uid 1000), which runs the API. |
 | `JWT_SECRET` | **required**, ≥ 32 characters | Secret that signs access tokens (`openssl rand -base64 48`). Changing it makes every current access token invalid; clients get new ones on their next refresh. |
 | `ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
 | `REFRESH_TOKEN_TTL` | `30d` | Session idle timeout. A session ends after this long **without use**, and every use restarts the countdown. Android widgets refresh every 30 min, so a phone in use stays signed in. |
@@ -39,6 +39,7 @@ Then open `PUBLIC_URL` (default http://localhost:9292) and create the first acco
 | `LOG_LEVEL` | `info` | Backend log level |
 | `SHARE_LINK_MAX_FAILURES` | `10` | Unknown share links an IP may request within `SHARE_LINK_BLOCK` before it is blocked for `SHARE_LINK_BLOCK` (NFR-3). `0` disables it. |
 | `SHARE_LINK_BLOCK` | `15m` | Counting window and block duration for the above. |
+| `RATE_LIMIT` | `true` | The API's rate limits (300 requests per minute per IP, 10 sign-ins or sign-ups). Keep them on; the end-to-end tests turn them off. |
 | `TRUST_PROXY` | `1` | Number of reverse proxies in front of the API, used to find the client IP for rate limiting. `1` = the bundled nginx. Set it to `2` when you add your own HTTPS proxy in front. |
 
 ## HTTPS and reverse proxy
@@ -117,14 +118,27 @@ docker compose up -d --build  # migrations run automatically when the backend st
 
 ## Backups
 
-Everything is in PostgreSQL. Back up with:
+Everything is in one SQLite file, `DB_DIR/prod.db` (default `./db/prod.db`). Never copy `prod.db` alone while the API runs: recent changes may still be in `prod.db-wal`. Either:
+
+- take a consistent copy while it runs, with the `sqlite3` tool on the host (`apt install sqlite3`):
+
+  ```bash
+  sqlite3 db/prod.db ".backup 'selfnotes-backup.db'"
+  ```
+
+- or stop the API and copy the whole folder:
+
+  ```bash
+  docker compose stop backend
+  cp -a db db-backup
+  docker compose start backend
+  ```
+
+To restore, stop the API, put the backup in place as `prod.db`, delete any `prod.db-wal` and `prod.db-shm` left next to it, then start the API again:
 
 ```bash
-docker compose exec -T db pg_dump -U selfnotes -d selfnotes -Fc > selfnotes.dump
-```
-
-Restore into an empty database:
-
-```bash
-docker compose exec -T db pg_restore -U selfnotes -d selfnotes --clean --if-exists < selfnotes.dump
+docker compose stop backend
+cp selfnotes-backup.db db/prod.db
+rm -f db/prod.db-wal db/prod.db-shm
+docker compose start backend
 ```

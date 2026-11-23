@@ -1,0 +1,65 @@
+{
+  "description": "GFM task items, as parseTaskItems finds them. Shared by frontend/src/markdown/tasklist.ts, backend/src/lib/tasklist.ts and the Android widgets (WidgetMarkdown.taskItems): a checkbox toggled anywhere must target the same item everywhere.",
+  "cases": [
+    {
+      "name": "markers, checked states, inline formatting kept as written",
+      "content": "- [ ] Milk\n- [x] Bread\n* [X] Eggs\n1. [ ] **Butter**\nNot an item",
+      "items": [
+        { "line": 0, "checked": false, "text": "Milk" },
+        { "line": 1, "checked": true, "text": "Bread" },
+        { "line": 2, "checked": true, "text": "Eggs" },
+        { "line": 3, "checked": false, "text": "**Butter**" }
+      ]
+    },
+    {
+      "name": "lines inside fenced code blocks are ignored",
+      "content": "```\n- [ ] code\n```\n- [ ] real\n~~~md\n- [x] tilde code\n~~~\n+ [x] after",
+      "items": [
+        { "line": 3, "checked": false, "text": "real" },
+        { "line": 7, "checked": true, "text": "after" }
+      ]
+    },
+    {
+      "name": "an unclosed fence hides the rest of the note",
+      "content": "- [ ] before\n```\n- [ ] inside",
+      "items": [{ "line": 0, "checked": false, "text": "before" }]
+    },
+    {
+      "name": "nested and numbered items",
+      "content": "- [ ] Parent\n  - [x] Child\n    1) [ ] Deep\n\t2. [X] Tab",
+      "items": [
+        { "line": 0, "checked": false, "text": "Parent" },
+        { "line": 1, "checked": true, "text": "Child" },
+        { "line": 2, "checked": false, "text": "Deep" },
+        { "line": 3, "checked": true, "text": "Tab" }
+      ]
+    },
+    {
+      "name": "CRLF line endings",
+      "content": "- [ ] A\r\n- [x] B\r\n",
+      "items": [
+        { "line": 0, "checked": false, "text": "A" },
+        { "line": 1, "checked": true, "text": "B" }
+      ]
+    },
+    {
+      "name": "empty items and surrounding spaces",
+      "content": "- [ ]\n- [x] \n- [ ]  spaced  ",
+      "items": [
+        { "line": 0, "checked": false, "text": "" },
+        { "line": 1, "checked": true, "text": "" },
+        { "line": 2, "checked": false, "text": "spaced" }
+      ]
+    },
+    {
+      "name": "look-alikes that are not items",
+      "content": "-[ ] no space\n- [] empty brackets\n- [y] other letter\n> - [ ] quoted\ntext - [ ] inline\n- [ ]no space after",
+      "items": []
+    },
+    {
+      "name": "links and code stay as written",
+      "content": "- [ ] [link](http://x) `code`",
+      "items": [{ "line": 0, "checked": false, "text": "[link](http://x) `code`" }]
+    }
+  ]
+}

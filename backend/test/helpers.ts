@@ -27,10 +27,17 @@ export async function createTestApp(env: Record<string, string> = {}): Promise<A
   return app;
 }
 
+/** Empty every table (children first: SQLite enforces the foreign keys). */
 export async function resetDb(): Promise<void> {
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE users, sessions, notes, note_members, categories, note_categories, share_links CASCADE',
-  );
+  await prisma.$transaction([
+    prisma.shareLink.deleteMany(),
+    prisma.noteCategory.deleteMany(),
+    prisma.noteMember.deleteMany(),
+    prisma.note.deleteMany(),
+    prisma.category.deleteMany(),
+    prisma.session.deleteMany(),
+    prisma.user.deleteMany(),
+  ]);
 }
 
 export interface TestUser {

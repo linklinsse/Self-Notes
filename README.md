@@ -14,13 +14,13 @@ Self-hosted notes app with a web front, a REST API, and an Android app (APK).
 - **One command to run it**: `docker compose up` starts the database, the API and the web app.
 - **Android APK** built and published by GitHub Actions. The app's version comes from the [`VERSION`](VERSION) file.
 
-> **Status:** the web app and the API work end to end with `docker compose up` (milestones M1–M3). The Android app builds (M4): its first signed release needs the keystore secrets ([release.md](docs/release.md)). The widgets (M5) are next. See the [roadmap](docs/roadmap.md).
+> **Status:** the web app, the API, the Android app and its widgets are done (milestones M1–M5). The first signed APK release needs the keystore secrets ([release.md](docs/release.md)). See the [roadmap](docs/roadmap.md).
 
 ## Tech stack
 
 | Part       | Technology |
 |------------|------------|
-| Backend    | Node.js 24 LTS, TypeScript, Fastify, Prisma, PostgreSQL 17 |
+| Backend    | Node.js 24 LTS, TypeScript, Fastify, Prisma, SQLite |
 | Frontend   | React, TypeScript, Vite, react-markdown with remark-gfm |
 | Android    | Capacitor (wraps the same frontend into an APK). Native Kotlin for the session store and the widgets (Jetpack Glance + WorkManager). |
 | Deployment | Docker Compose (`db` + `backend` + `web` nginx) |
@@ -34,13 +34,12 @@ The reasons for these choices are in [docs/architecture.md](docs/architecture.md
 Self-Notes/
 ├── VERSION                  # Application version (single source of truth)
 ├── CHANGELOG.md             # Release notes (used for GitHub releases)
-├── docker-compose.yml       # Full stack: db + backend + web
-├── docker-compose.dev.yml   # Dev overlay (publishes PostgreSQL on localhost)
+├── docker-compose.yml       # Full stack: backend (SQLite in ./db) + web
 ├── .env.example             # Runtime configuration template
-├── docker-compose.test.yml  # Throwaway PostgreSQL for backend tests
 ├── backend/                 # REST API (Fastify + Prisma)
 ├── frontend/                # Web app (React + Vite), served by nginx
-│   └── android/             # Capacitor Android project: native session store (M4), widgets (M5)
+│   └── android/             # Capacitor Android project: native session store and widgets (Kotlin)
+├── e2e/                     # End-to-end browser tests (Playwright)
 ├── docs/                    # Documentation (see the table below)
 └── .github/workflows/       # ci.yml, release-apk.yml
 ```
@@ -48,7 +47,7 @@ Self-Notes/
 ## Quick start (Docker)
 
 ```bash
-cp .env.example .env        # then edit POSTGRES_PASSWORD, JWT_SECRET, PUBLIC_URL
+cp .env.example .env        # then edit JWT_SECRET, PUBLIC_URL
 docker compose up -d --build
 # open http://localhost:9292
 ```

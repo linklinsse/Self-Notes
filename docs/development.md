@@ -5,7 +5,7 @@
 | Tool | Version | For |
 |------|---------|-----|
 | Node.js | 24 LTS | backend and frontend |
-| Docker + Compose v2 | recent | PostgreSQL, full stack |
+| Docker + Compose v2 | recent | full stack |
 | JDK | 21 (Temurin) | Android build |
 | Android SDK / Android Studio | recent | Android build, emulator |
 
@@ -14,16 +14,13 @@
 ```bash
 cp .env.example .env
 
-# 1. Database only, published on 127.0.0.1:5432
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
-
-# 2. API on :3000 (hot reload)
-cp backend/.env.example backend/.env          # put your POSTGRES_PASSWORD in DATABASE_URL
+# 1. API on :3000 (hot reload), with the SQLite file backend/prisma/dev.db
+cp backend/.env.example backend/.env
 npm --prefix backend install
-npm --prefix backend run db:migrate
+npm --prefix backend run db:migrate           # creates or updates dev.db
 npm --prefix backend run dev                  # OpenAPI UI: http://localhost:3000/api/docs
 
-# 3. Front on :5173 (hot reload). Vite proxies /api to http://localhost:3000
+# 2. Front on :5173 (hot reload). Vite proxies /api to http://localhost:3000
 npm --prefix frontend install
 npm --prefix frontend run dev
 ```
@@ -32,15 +29,26 @@ Full stack exactly as in production: `docker compose up -d --build` → http://l
 
 ## Backend tests
 
-Integration tests run against a real PostgreSQL. Locally, a throwaway database on port 5433, kept in memory:
+Integration tests run against a real SQLite file, with nothing to start first:
 
 ```bash
-docker compose -f docker-compose.test.yml up -d --wait
-npm --prefix backend test           # migrates the test DB, then runs all suites
-docker compose -f docker-compose.test.yml down
+npm --prefix backend test           # recreates backend/.test-db/test.db, migrates it, runs all suites
 ```
 
-CI uses its own PostgreSQL service through `DATABASE_URL`. `TEST_DATABASE_URL` overrides both. Every test truncates the tables, so never point the tests at a database you care about.
+CI does the same. `TEST_DATABASE_URL` (`file:/path/to/test.db`) points the tests at another file, which is then migrated but not recreated. Every test empties the tables, so never point the tests at a database you care about.
+
+## End-to-end tests
+
+`e2e/` holds Playwright tests of the web app in Chromium, against the real Docker stack: sign-up and sign-in, text and list notes, search, sharing with a user and through a link, locked notes. Each test creates its own accounts, so run them on a throwaway stack, with the rate limits off:
+
+```bash
+RATE_LIMIT=false docker compose up -d --build --wait
+npm --prefix e2e ci
+npx --prefix e2e playwright install chromium      # once
+npm --prefix e2e test                             # E2E_BASE_URL to test another URL (default http://localhost:9292)
+```
+
+CI runs them in the "Docker images and end-to-end tests" job. On failure it keeps the Playwright report (traces and screenshots) as an artifact for 7 days.
 
 ## Android
 
@@ -68,14 +76,16 @@ adb reverse tcp:3000 tcp:3000
 
 **WebView version:** the app needs Android System WebView 100 or newer (`minWebViewVersion` in `capacitor.config.ts`). Emulator images without the Play Store often ship an old WebView, and then show the "Self-Notes can't start" page. Use an image with Google Play, or update the WebView on the emulator.
 
-**Deep links**, as the widgets will send them:
+**Deep links**, as the widgets send them:
 
 ```bash
 adb shell am start -a android.intent.action.VIEW -d "selfnotes://notes/new?type=list" app.selfnotes
 adb shell am start -a android.intent.action.VIEW -d "selfnotes://notes/<note id>" app.selfnotes
 ```
 
-**Widgets** are native Kotlin code (`frontend/android/app/src/main/java/app/selfnotes/widget/`). Work on them in Android Studio, which shows Glance previews. Install the debug build, then long-press the home screen → Widgets → Self-Notes. While you are signed in to the app, a widget's refresh button forces an immediate refresh.
+**Widgets** are native Kotlin code (`frontend/android/app/src/main/java/app/selfnotes/widget/`, architecture §6.2). Install the debug build, sign in to the app, then long-press the home screen → Widgets → Self-Notes, and drag one out: its setup screen opens. A widget's refresh button refreshes it at once; otherwise WorkManager does every 30 minutes, and the app asks for a refresh after each change. `testDebugUnitTest` also runs the widget tests (Markdown with the shared task-item fixtures, API calls, state changes).
+
+The widget setup screens use Jetpack Compose. The Compose BOM is pinned in `variables.gradle` to a version that still builds with `compileSdk 36` and the Android Gradle plugin used by Capacitor 8: newer Compose releases need `compileSdk 37` and AGP 9.1.
 
 ## Expected npm scripts
 
@@ -87,7 +97,7 @@ CI calls these scripts and skips the ones that are missing:
 | `build` | ✅ (required) | ✅ (required) |
 | `lint` | ✅ | ✅ |
 | `typecheck` | ✅ | ✅ |
-| `test` | ✅ (Vitest + real PostgreSQL) | ✅ (Vitest) |
+| `test` | ✅ (Vitest + real SQLite file) | ✅ (Vitest) |
 | `db:migrate` | ✅ | |
 | `openapi` | ✅ (writes `backend/openapi.json`) | |
 | `api:types` | | ✅ (regenerate types from the backend's OpenAPI) |

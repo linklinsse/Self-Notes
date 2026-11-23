@@ -1,5 +1,6 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
+apply plugin: 'org.jetbrains.kotlin.plugin.compose'
 
 // The version is written only in the repository's VERSION file (docs/release.md).
 def appVersion = rootProject.file('../../VERSION').text.trim()
@@ -27,6 +28,9 @@ android {
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~:!*.map'
         }
+    }
+    buildFeatures {
+        compose = true
     }
     buildTypes {
         release {
@@ -57,12 +61,19 @@ dependencies {
     implementation "androidx.core:core-ktx:$androidxCoreVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
+    // Widgets (docs/architecture.md §6.2)
+    implementation "androidx.glance:glance-appwidget:$glanceVersion"
+    implementation "androidx.work:work-runtime-ktx:$workVersion"
+    implementation platform("androidx.compose:compose-bom:$composeBomVersion")
+    implementation "androidx.compose.material3:material3"
+    implementation "androidx.activity:activity-compose:$activityComposeVersion"
     implementation project(':capacitor-android')
     testImplementation "junit:junit:$junitVersion"
     testImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion"
     // android.jar only has stubs of org.json: the JVM unit tests need the real implementation.
     testImplementation "org.json:json:$orgJsonVersion"
     testImplementation "com.squareup.okhttp3:mockwebserver:$mockWebServerVersion"
+    testImplementation "androidx.glance:glance-appwidget-testing:$glanceVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
