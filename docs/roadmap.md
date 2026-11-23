@@ -37,14 +37,14 @@
 - [x] Permission matrix tests (spec §5.3), in the backend
 - [x] End-to-end browser tests in CI (Playwright, `e2e/`), against the Docker stack
 
-### M4: Android APK and first release (0.1.0)
+### M4: Android APK and first release (0.1.0) ✅
 - [x] Capacitor 8 setup, `appId`, icon and splash
 - [x] Native `SessionStore` + `SelfNotesNative` plugin (server URL, Keystore-encrypted tokens, refresh under one mutex), with JVM unit tests
 - [x] Deep links `selfnotes://notes/…`, status bar and navigation bar theming
 - [x] `build.gradle` reads `VERSION`
-- [ ] Keystore and GitHub secrets set up, first **Release APK** run → `v0.1.0` (manual, see [release.md](release.md#signing-keystore-one-time-setup))
+- [x] Keystore and GitHub secrets set up, first **Release APK** run → `v0.1.0` (2026-11-22)
 
-### M5: Android widgets ✅ (in the first release, 0.1.0)
+### M5: Android widgets ✅ (0.2.0)
 - [x] Glance + WorkManager setup, per-widget state, 30-min refresh worker
 - [x] **Notes** widget with its configuration (scope, category)
 - [x] **Notes by type** widget (type, scope, category)
@@ -75,4 +75,4 @@
 | Q4 | Android **application id** (permanent once released) | `app.selfnotes` |
 | Q5 | Tech stack | React + Capacitor / Fastify + Prisma + SQLite (see [architecture.md](architecture.md)). PostgreSQL until 2026-11-23: replaced by SQLite, a single file, simpler to host and back up. |
 | Q6 | Session length | Ends after 30 days **without use**, with no absolute maximum. Widgets keep phones signed in (AUTH-4). |
-| Q7 | Widgets in the first APK? | ✅ Yes: M5 was finished before the first release, so 0.1.0 has the widgets. |
+| Q7 | Widgets in the first APK? | ✅ No: 0.1.0 shipped without them; they come with 0.2.0, together with the switch to SQLite. |

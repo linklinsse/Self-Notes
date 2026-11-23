@@ -14,7 +14,7 @@ Self-hosted notes app with a web front, a REST API, and an Android app (APK).
 - **One command to run it**: `docker compose up` starts the database, the API and the web app.
 - **Android APK** built and published by GitHub Actions. The app's version comes from the [`VERSION`](VERSION) file.
 
-> **Status:** the web app, the API, the Android app and its widgets are done (milestones M1–M5). The first signed APK release needs the keystore secrets ([release.md](docs/release.md)). See the [roadmap](docs/roadmap.md).
+> **Status:** the web app, the API, the Android app and its widgets are done (milestones M1–M5). Releases, with the signed APK, are on the GitHub Releases page ([release.md](docs/release.md)). See the [roadmap](docs/roadmap.md).
 
 ## Tech stack
 
