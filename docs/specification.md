@@ -38,7 +38,7 @@ This document defines **what** Self-Notes does. Requirement IDs (`NOTE-3`, `SHAR
 | NOTE-7 | The type can be changed. **Text → list**: each non-empty line that is not already an item becomes an unchecked item. **List → text**: the Markdown is kept as is. |
 | NOTE-8 | Notes are saved automatically about 1 second after typing stops, and immediately when the editor is left. |
 | NOTE-9 | The home screen shows the user's notes as cards (title, preview, categories, sharing indicator) in an aligned grid. It has two tabs: **My notes** and **Shared with me**. The user picks the order: **favorites first** then last updated (default), **last updated**, **A to Z** (accents and case ignored, untitled notes last), or **by category** (one section per category, in the user's category order, then "No category"). The choice is saved on the account. |
-| NOTE-10 | Search matches text in titles and content (case-insensitive). Notes can be filtered by category and by type. |
+| NOTE-10 | Search matches text in titles and content, ignoring case and accents ("ete" finds "Été"). Notes can be filtered by category and by type. |
 | NOTE-11 | **Favorites** (a star on the note) are per user. Marking a shared note as a favorite only affects the user who does it. The API calls it `pinned`. |
 | NOTE-12 | Only the owner can delete a note. Deleting it removes it for every member and invalidates all its share links. |
 | NOTE-13 | **Concurrent edits:** every note has a `version` number. An update made from an outdated version is rejected (HTTP 409). The client then shows the latest content and lets the user reapply their change. |
@@ -117,9 +117,9 @@ Home-screen widgets in the APK. They are native Android code (not the WebView) a
 | WIDGET-3 | **Note** widget: the content of one note, chosen when placed from a searchable list of the user's notes. |
 | WIDGET-4 | Each list row shows the title (or the first line if there is no title), a short preview, category colors and a type icon. List notes also show progress (`3/7`). Pinned notes come first, then the most recently updated, up to 50 notes. |
 | WIDGET-5 | The Note widget shows the title, then the content as **simplified Markdown**. Block structure is kept: headings, paragraphs, bullet and numbered lists, task items, and code in monospace. Inline formatting (bold, italics, links) is shown as plain text. Long content scrolls. |
-| WIDGET-6 | When the Note widget shows a **list** note, the user can **check and uncheck items** directly in the widget (Android 12+; on older versions, tapping opens the app). This needs the `owner` or `editor` role; viewers see the checkboxes as read-only. |
+| WIDGET-6 | When the Note widget shows a **list** note, the user can **check and uncheck items** directly in the widget, on every supported Android version. This needs the `owner` or `editor` role; viewers see the checkboxes as read-only. |
 | WIDGET-7 | Tapping a note opens it in the app. A **+** button creates a new note, using the widget's type for Notes by type. A refresh button reloads the data. |
-| WIDGET-8 | Widgets refresh **every 30 minutes** when the device is online. They also refresh immediately when the app saves a note, when the session or theme changes, and when the refresh button is tapped. When offline they keep showing the last data, with "updated X ago". |
+| WIDGET-8 | Widgets refresh **every 30 minutes** when the device is online. They also refresh immediately when the app saves a note, when the session or theme changes, and when the refresh button is tapped. When offline they keep showing the last data, with the time it was received ("Offline · updated 14:05"). |
 | WIDGET-9 | **No daily login:** widgets use the app's session, and their periodic refresh keeps that session alive (AUTH-4). If the user logs out or the session ends, widgets show "Sign in to Self-Notes" and open the app when tapped. |
 | WIDGET-10 | Widgets use the colors of the user's current theme. |
 | WIDGET-11 | If the note behind a Note widget is deleted or no longer shared with the user, the widget shows "Note unavailable" with a button to pick another note. |

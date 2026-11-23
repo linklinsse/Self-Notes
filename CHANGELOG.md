@@ -6,6 +6,34 @@ The release pipeline copies the section matching [`VERSION`](VERSION) into the G
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-24
+
+**Upgrading from 0.1.0:** the database is now SQLite, and the PostgreSQL data of 0.1.0 is not carried over: the server starts with an empty database. Remove the `POSTGRES_*` lines from `.env` (see `.env.example` and docs/deployment.md).
+
+### Added
+- **Android home-screen widgets** (WIDGET-1 to WIDGET-12):
+  - **Notes**: a list of notes (my notes, shared with me, or all; optionally one category), favorites first;
+  - **Notes by type**: the same, only lists or only text notes;
+  - **Note**: one note as simplified Markdown; list items can be checked right from the widget (owners and editors);
+  - each widget is set up when placed (a searchable note picker for the Note widget); tapping a note opens it, **+** creates one, and a refresh button reloads;
+  - they use the app's session and theme, refresh every 30 minutes and after each change made in the app, and keep their last data offline ("Offline · updated 14:05");
+  - after sign-out they show "Sign in to Self-Notes" and forget the data; a deleted or unshared note shows "Note unavailable" with "Pick another note"; locked notes show their title only.
+- End-to-end browser tests (Playwright, `e2e/`) run in CI against the Docker stack: accounts, notes, search, sharing, share links, locked notes.
+- `RATE_LIMIT` in `docker-compose.yml` (default `true`), so that test stacks can turn the API's rate limits off.
+
+### Changed
+- **The database is SQLite** instead of PostgreSQL: one file, `./db/prod.db` by default (`DB_DIR`), in WAL mode. There is no `db` service any more, the `POSTGRES_*` variables are gone, and a backup is a copy of that file (docs/deployment.md). The backend container starts as root only to give the database folder to the `node` user, then runs as `node`.
+- Search ignores accents too ("ete" finds "Été"), and `%` or `_` in a search are matched literally (NOTE-10).
+- After signing out, the next sign-in opens the notes grid instead of the page left before signing out (which could belong to another account). An expired session still comes back to the same page.
+
+### Removed
+- `docker-compose.dev.yml` and `docker-compose.test.yml`: the backend tests and `npm run dev` use SQLite files, with nothing to start first.
+
+### Fixed
+- Cancelling a note created just now no longer shows it again in the grid for a moment.
+
+## [0.1.0] - 2026-11-22
+
 ### Added
 - Project foundation: repository, documentation, Docker Compose stack, CI and APK release workflows, `VERSION` file.
 - Backend API (`/api/v1`):

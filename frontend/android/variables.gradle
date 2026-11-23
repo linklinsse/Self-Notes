@@ -16,4 +16,11 @@ ext {
     kotlinxCoroutinesVersion = '1.11.0'
     orgJsonVersion = '20260814'
     mockWebServerVersion = '5.5.1'
+    // Widgets (M5)
+    glanceVersion = '1.2.0'
+    workVersion = '2.12.0'
+    // Compose UI 1.11 / Material 3 1.4: Compose 1.12 and later need compileSdk 37 and AGP 9.1,
+    // newer than what Capacitor 8 uses.
+    composeBomVersion = '2026.06.01'
+    activityComposeVersion = '1.13.0'
 }

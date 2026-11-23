@@ -4,7 +4,7 @@ import { AppError, badRequest, notFound } from '../../errors.js';
 import { randomToken } from '../../lib/tokens.js';
 import { authOf } from '../../plugins/auth.js';
 import { UsernameSchema } from '../users/schemas.js';
-import { activeLinkWhere, requireMemberRole } from '../notes/access.js';
+import { activeLinkWhere, byRoleDesc, requireMemberRole } from '../notes/access.js';
 import { IdParamsSchema, RoleSchema, ShareRoleSchema } from '../notes/schemas.js';
 
 const MemberSchema = z.object({
@@ -65,11 +65,12 @@ export const sharingRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request) => {
       await requireMemberRole(prisma, request.params.id, authOf(request).userId, 'viewer');
-      return prisma.noteMember.findMany({
+      const members = await prisma.noteMember.findMany({
         where: { noteId: request.params.id },
         include: memberInclude,
-        orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
+        orderBy: { createdAt: 'asc' },
       });
+      return members.sort(byRoleDesc); // stable: oldest first within a role
     },
   );
 

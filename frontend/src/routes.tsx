@@ -15,7 +15,11 @@ function RequireAuth() {
   const { state, retry } = useAuth();
   const location = useLocation();
   if (state.status === 'loading') return <CenteredSpinner />;
-  if (state.status === 'anonymous') return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  if (state.status === 'anonymous') {
+    // An expired session comes back to the same page after sign-in; a sign-out does not.
+    const from = state.signedOut ? undefined : location.pathname + location.search;
+    return <Navigate to="/login" replace state={from ? { from } : null} />;
+  }
   if (state.status === 'unreachable') {
     // Never sign out because of the network (AUTH-4): offer to retry instead.
     return (

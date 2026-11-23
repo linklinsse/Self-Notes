@@ -15,3 +15,8 @@ frontend/android
 *.keystore
 *.apk
 *.aab
+db
+**/.test-db
+*.db
+*.db-*
+tmp

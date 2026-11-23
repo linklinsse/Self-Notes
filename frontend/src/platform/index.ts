@@ -35,6 +35,22 @@ export interface SessionBackend {
   clear(revoke: boolean): Promise<void>;
 }
 
+/** The resolved theme's colors, as CSS colors (THEME-4, WIDGET-10). */
+export interface ThemeColors {
+  dark: boolean;
+  background: string;
+  surface: string;
+  card: string;
+  accent: string;
+  accentFill: string;
+  onAccentFill: string;
+  border: string;
+  text1: string;
+  text2: string;
+  checkbox: string;
+  codeBg: string;
+}
+
 export interface Platform {
   kind: 'web' | 'android';
   /** Loads what is kept outside the WebView. Called once, before the first render. */
@@ -46,8 +62,10 @@ export interface Platform {
   /** How the refresh token travels: httpOnly cookie (same-origin web) or JSON body. */
   tokenTransport(): TokenTransport;
   session: SessionBackend;
-  /** THEME-4: the system bars follow the theme (Android). `background` is a #rrggbb color. */
-  setThemeColors(colors: { background: string; dark: boolean }): void;
+  /** THEME-4, WIDGET-10: the system bars and the home-screen widgets follow the theme (Android). */
+  setThemeColors(colors: ThemeColors): void;
+  /** WIDGET-8: a note changed, so the home-screen widgets refresh soon (Android). */
+  refreshWidgets(): void;
   /** Links that open the app (selfnotes://…, architecture §6.2), as in-app paths. */
   onDeepLink(open: (path: string) => void): void;
 }

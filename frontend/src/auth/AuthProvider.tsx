@@ -8,7 +8,11 @@ import { storage } from '../platform/storage';
 
 export type AuthState =
   | { status: 'loading' }
-  | { status: 'anonymous' }
+  /**
+   * `signedOut`: the user signed out. The next sign-in then starts from the notes grid rather
+   * than the page left (which may belong to another account on a shared device).
+   */
+  | { status: 'anonymous'; signedOut?: boolean }
   /** A session may exist but the server cannot be reached: never log out because of the network. */
   | { status: 'unreachable' }
   | { status: 'authenticated'; user: User };
@@ -86,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async logout() {
         await signOut();
         queryClient.clear();
-        setState({ status: 'anonymous' });
+        setState({ status: 'anonymous', signedOut: true });
       },
       setUser: signedIn,
       retry: () => {

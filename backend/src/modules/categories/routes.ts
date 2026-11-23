@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { isUniqueViolation } from '../../db.js';
+import { categoryNameKey } from '../../lib/fold.js';
 import { AppError, notFound } from '../../errors.js';
 import { authOf } from '../../plugins/auth.js';
 import { IdParamsSchema } from '../notes/schemas.js';
@@ -36,7 +37,7 @@ export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
 
   async function assertNameFree(userId: string, name: string, exceptId?: string) {
     const existing = await prisma.category.findFirst({
-      where: { userId, name: { equals: name, mode: 'insensitive' }, ...(exceptId ? { id: { not: exceptId } } : {}) },
+      where: { userId, nameKey: categoryNameKey(name), ...(exceptId ? { id: { not: exceptId } } : {}) },
       select: { id: true },
     });
     if (existing) throw nameTaken();
@@ -71,7 +72,12 @@ export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
       const last = await prisma.category.aggregate({ where: { userId }, _max: { position: true } });
       try {
         const created = await prisma.category.create({
-          data: { userId, ...request.body, position: (last._max.position ?? -1) + 1 },
+          data: {
+            userId,
+            ...request.body,
+            nameKey: categoryNameKey(request.body.name),
+            position: (last._max.position ?? -1) + 1,
+          },
           include: withCount,
         });
         return reply.status(201).send(toCategory(created));
@@ -104,7 +110,9 @@ export const categoryRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!owned) throw notFound('Category not found.');
       if (request.body.name !== undefined) await assertNameFree(userId, request.body.name, id);
       try {
-        return toCategory(await prisma.category.update({ where: { id }, data: request.body, include: withCount }));
+        const { name } = request.body;
+        const data = { ...request.body, ...(name !== undefined ? { nameKey: categoryNameKey(name) } : {}) };
+        return toCategory(await prisma.category.update({ where: { id }, data, include: withCount }));
       } catch (err) {
         if (isUniqueViolation(err)) throw nameTaken();
         throw err;

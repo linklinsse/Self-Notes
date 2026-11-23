@@ -61,22 +61,8 @@ jobs:
     needs: meta
     if: needs.meta.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: selfnotes_test
-          POSTGRES_USER: selfnotes
-          POSTGRES_PASSWORD: selfnotes
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U selfnotes -d selfnotes_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    # The integration tests create their own SQLite file (backend/.test-db/).
     env:
-      DATABASE_URL: postgresql://selfnotes:selfnotes@localhost:5432/selfnotes_test
       JWT_SECRET: ci-only-not-a-secret
     defaults:
       run:
@@ -153,11 +139,39 @@ jobs:
           retention-days: 7
 
   docker:
-    name: Docker images
+    name: Docker images and end-to-end tests
     needs: meta
     if: needs.meta.outputs.backend == 'true' && needs.meta.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+    env:
+      # Shell values win over --env-file: a valid secret, and no rate limits (the tests create many accounts).
+      JWT_SECRET: ci-e2e-only-not-a-secret-0123456789abcdef
+      RATE_LIMIT: "false"
     steps:
       - uses: actions/checkout@v4
-      - name: Build all compose images
-        run: docker compose --env-file .env.example build
+      - name: Build and start the stack
+        run: docker compose --env-file .env.example up -d --build --wait --wait-timeout 180
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: End-to-end tests (Playwright, against http://localhost:9292)
+        working-directory: e2e
+        run: |
+          npm run typecheck
+          npm test
+      - name: Stack logs
+        if: failure()
+        run: docker compose --env-file .env.example logs --no-color
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-report-${{ github.sha }}
+          path: e2e/playwright-report
+          retention-days: 7

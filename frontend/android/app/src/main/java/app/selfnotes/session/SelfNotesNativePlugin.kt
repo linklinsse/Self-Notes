@@ -6,6 +6,9 @@ import android.content.res.Configuration
 import android.net.Uri
 import androidx.core.graphics.toColorInt
 import androidx.core.view.WindowCompat
+import app.selfnotes.widget.WidgetColors
+import app.selfnotes.widget.WidgetTheme
+import app.selfnotes.widget.WidgetUpdater
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -41,6 +44,7 @@ class SelfNotesNativePlugin : Plugin() {
         val url = call.getString("url")
         if (url.isNullOrBlank()) return@run call.reject("url is required", "INVALID_ARGUMENT")
         store.setServerUrl(url)
+        WidgetUpdater.requestRefresh(context) // a new server signs the widgets out too
         call.resolve()
     }
 
@@ -56,6 +60,7 @@ class SelfNotesNativePlugin : Plugin() {
         }
         val expiresAtMs = IsoTime.parseMillis(expiresAt) ?: (System.currentTimeMillis() + 60_000L)
         store.setSession(serverUrl, AccessToken(accessToken, expiresAt, expiresAtMs), refreshToken)
+        WidgetUpdater.requestRefresh(context) // WIDGET-8: widgets show the account at once
         call.resolve()
     }
 
@@ -82,6 +87,33 @@ class SelfNotesNativePlugin : Plugin() {
     @PluginMethod
     fun clearSession(call: PluginCall) = run(call) {
         store.clearSession(revoke = call.getBoolean("revoke", false) == true)
+        WidgetUpdater.requestRefresh(context) // WIDGET-9: "Sign in to Self-Notes", data removed
+        call.resolve()
+    }
+
+    /**
+     * `{ noteId? }`, after the app saved, deleted or left a note (WIDGET-8). Calls that follow each
+     * other within 2 seconds make one refresh, so autosave does not refresh widgets while typing.
+     */
+    @PluginMethod
+    fun refreshWidgets(call: PluginCall) {
+        WidgetUpdater.requestRefresh(context, delayMs = 2_000)
+        call.resolve()
+    }
+
+    /**
+     * WIDGET-10: the resolved theme's colors (CSS colors), when the theme changes. Widgets and their
+     * setup screens use them; widgets redraw without a network call.
+     */
+    @PluginMethod
+    fun setWidgetTheme(call: PluginCall) = run(call) {
+        val keys = listOf("background", "surface", "card", "accent", "accentFill", "onAccentFill", "border", "text1", "text2", "checkbox", "codeBg")
+        val colors = WidgetColors.fromCss(keys.associateWith { call.getString(it) }, call.getBoolean("dark", true) == true)
+            ?: return@run call.reject("Every color must be a CSS color (#rrggbb or rgba())", "INVALID_ARGUMENT")
+        if (colors != WidgetTheme.load(context)) {
+            WidgetTheme.save(context, colors)
+            WidgetUpdater.applyTheme(context)
+        }
         call.resolve()
     }
 

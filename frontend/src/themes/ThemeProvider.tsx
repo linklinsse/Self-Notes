@@ -17,7 +17,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useLayoutEffect(() => {
     applyTheme(theme);
-    platform.setThemeColors({ background: theme.bgBase, dark: theme.dark }); // THEME-4
+    // THEME-4, WIDGET-10
+    platform.setThemeColors({
+      dark: theme.dark,
+      background: theme.bgBase,
+      surface: theme.bgSurface,
+      card: theme.bgCard,
+      accent: theme.accent,
+      accentFill: theme.accentFill,
+      onAccentFill: theme.onAccentFill,
+      border: theme.border,
+      text1: theme.text1,
+      text2: theme.text2,
+      checkbox: theme.checkbox,
+      codeBg: theme.codeBg,
+    });
   }, [theme]);
 
   return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;

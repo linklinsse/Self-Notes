@@ -93,6 +93,22 @@ describe('notes', () => {
     expect(await titles(`?category=${cat.id}`)).toEqual(['Groceries']);
   });
 
+  it('NOTE-10: search ignores case and accents, takes % and _ literally, and follows edits', async () => {
+    const summer = await createNote(app, alice, { title: 'Été à Paris', content: 'Café CRÈME' });
+    await createNote(app, alice, { title: '100% sûr', content: 'Œuvre' });
+    const titles = async (q: string) =>
+      (await list(alice, `?q=${encodeURIComponent(q)}`)).json().items.map((n: { title: string }) => n.title).sort();
+    expect(await titles('ete a')).toEqual(['Été à Paris']);
+    expect(await titles('ÉTÉ')).toEqual(['Été à Paris']);
+    expect(await titles('creme')).toEqual(['Été à Paris']);
+    expect(await titles('sur')).toEqual(['100% sûr']);
+    expect(await titles('%')).toEqual(['100% sûr']);
+    expect(await titles('_')).toEqual([]);
+    await patch(alice, summer.id, { version: 1, title: 'Hiver', content: 'Thé' });
+    expect(await titles('creme')).toEqual([]);
+    expect(await titles('the')).toEqual(['Hiver']);
+  });
+
   it('paginates with a cursor', async () => {
     for (const title of ['1', '2', '3']) await createNote(app, alice, { title });
     const first = (await list(alice, '?limit=2')).json();

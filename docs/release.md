@@ -36,7 +36,7 @@ The workflow can also be started by hand (**Actions → Release APK → Run work
 
 | File | Trigger | Does |
 |------|---------|------|
-| [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | PRs, pushes to `main`, manual | Validates `VERSION` and `docker-compose.yml`. Lint, typecheck, test and build for the backend (against a PostgreSQL service) and the frontend. Runs the native unit tests and builds a debug APK (artifact kept 7 days). Builds the Docker images. Each module's job is skipped until that module exists. |
+| [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) | PRs, pushes to `main`, manual | Validates `VERSION` and `docker-compose.yml`. Lint, typecheck, test and build for the backend (against a SQLite file) and the frontend. Runs the native unit tests and builds a debug APK (artifact kept 7 days). Builds the Docker images, starts the stack and runs the end-to-end tests (Playwright). Each module's job is skipped until that module exists. |
 | [`.github/workflows/release-apk.yml`](../.github/workflows/release-apk.yml) | Push to `main` that changes `VERSION`, manual | Builds, signs and publishes the release APK (above). Skipped while `frontend/android` does not exist. |
 
 ## Android project requirements

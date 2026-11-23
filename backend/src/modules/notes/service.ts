@@ -2,6 +2,7 @@ import type { NoteRole, Prisma, PrismaClient } from '@prisma/client';
 import type { Db } from '../../db.js';
 import { AppError, badRequest, forbidden, notFound } from '../../errors.js';
 import { isEncryptedContent } from '../../lib/encrypted-content.js';
+import { contentKey, searchKey, titleKey } from '../../lib/fold.js';
 import { plainPreview, taskProgress, textToList, toggleTaskItem } from '../../lib/tasklist.js';
 import { activeLinkWhere } from './access.js';
 import type {
@@ -94,12 +95,12 @@ function decodeCursor(cursor: string | undefined): number {
 
 const encodeCursor = (offset: number) => Buffer.from(String(offset), 'utf8').toString('base64url');
 
-/** NOTE-9 / NOTE-10: the caller's notes, pinned first then most recently updated. */
 /** NOTE-9: the orders offered by the grid. noteId last keeps pages stable. */
 const ORDER_BY = {
   favorites: [{ pinned: 'desc' }, { note: { updatedAt: 'desc' } }, { noteId: 'asc' }],
   updated: [{ note: { updatedAt: 'desc' } }, { noteId: 'asc' }],
-  title: [{ note: { sortTitle: { sort: 'asc', nulls: 'last' } } }, { note: { updatedAt: 'desc' } }, { noteId: 'asc' }],
+  // Case and accents ignored ("À faire", "apple", "Été", "Zèbre"); untitled notes last.
+  title: [{ note: { titleKey: { sort: 'asc', nulls: 'last' } } }, { note: { updatedAt: 'desc' } }, { noteId: 'asc' }],
 } satisfies Record<ListQuery['sort'], Prisma.NoteMemberOrderByWithRelationInput[]>;
 
 export async function listNotes(db: Db, userId: string, query: ListQuery) {
@@ -110,17 +111,12 @@ export async function listNotes(db: Db, userId: string, query: ListQuery) {
       : query.scope === 'shared'
         ? { in: ['editor', 'viewer'] as NoteRole[] }
         : undefined;
+  const q = query.q ? searchKey(query.q) : '';
   const noteWhere: Prisma.NoteWhereInput = {
     ...(query.type ? { type: query.type } : {}),
-    ...(query.q
-      ? {
-          OR: [
-            { title: { contains: query.q, mode: 'insensitive' } },
-            // Encrypted content is never searched (NOTE-17).
-            { locked: false, content: { contains: query.q, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+    // NOTE-10: case and accents ignored, through the folded keys. Encrypted content is never
+    // searched (NOTE-17): its key stays empty.
+    ...(q ? { OR: [{ titleKey: { contains: q } }, { locked: false, contentKey: { contains: q } }] } : {}),
     ...(query.category.length > 0
       ? { categories: { some: { categoryId: { in: query.category }, category: { userId } } } }
       : {}),
@@ -163,8 +159,10 @@ export async function createNote(prisma: PrismaClient, userId: string, input: Cr
     const note = await tx.note.create({
       data: {
         title: input.title,
+        titleKey: titleKey(input.title),
         type: input.type,
         content: input.content,
+        contentKey: contentKey(input.content, input.locked),
         locked: input.locked,
         updatedById: userId,
         members: { create: { userId, role: 'owner', pinned: input.pinned } },
@@ -213,9 +211,10 @@ export async function applyNoteUpdate(
   const result = await db.note.updateMany({
     where: { id: noteId, version: input.version },
     data: {
-      ...(input.title !== undefined ? { title: input.title } : {}),
+      ...(input.title !== undefined ? { title: input.title, titleKey: titleKey(input.title) } : {}),
       ...(input.type !== undefined ? { type: input.type } : {}),
-      ...(content !== undefined ? { content } : {}),
+      // The lock only changes together with the content (checked above).
+      ...(content !== undefined ? { content, contentKey: contentKey(content, locked) } : {}),
       ...(input.locked !== undefined ? { locked: input.locked } : {}),
       version: { increment: 1 },
       updatedById: actorUserId,
@@ -253,7 +252,13 @@ export async function applyToggleItem(
     if (next === note.content) return;
     const result = await db.note.updateMany({
       where: { id: noteId, version: note.version },
-      data: { content: next, version: { increment: 1 }, updatedById: actorUserId, updatedAt: new Date() },
+      data: {
+        content: next,
+        contentKey: contentKey(next, false),
+        version: { increment: 1 },
+        updatedById: actorUserId,
+        updatedAt: new Date(),
+      },
     });
     if (result.count === 1) return;
   }

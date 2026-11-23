@@ -1,38 +1,25 @@
-# Self-Notes — full stack: PostgreSQL + API + web front (nginx).
+# Self-Notes — full stack: API (SQLite database in ./db) + web front (nginx).
 # Usage:  cp .env.example .env  (edit secrets)  &&  docker compose up -d --build
-# Only the "web" service is published; it serves the front and proxies /api to "backend".
+# Needs Docker Compose v2 ("docker compose"); the old "docker-compose" 1.x cannot read this file.
+# The "web" service serves the front and proxies /api to "backend".
 
 name: self-notes
 
 services:
-  db:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-selfnotes}
-      POSTGRES_USER: ${POSTGRES_USER:-selfnotes}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
     image: self-notes-backend:local
     restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
+    volumes:
+      # The database: <DB_DIR>/prod.db, with prod.db-wal and prod.db-shm while the API runs.
+      # Back up this folder (docs/deployment.md).
+      - ${DB_DIR:-./db}:/app/db
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-selfnotes}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-selfnotes}
+      DATABASE_URL: file:/app/db/prod.db
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
       ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
       REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-30d}
@@ -43,6 +30,8 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-1}
       SHARE_LINK_MAX_FAILURES: ${SHARE_LINK_MAX_FAILURES:-10}
       SHARE_LINK_BLOCK: ${SHARE_LINK_BLOCK:-15m}
+      # Keep it on in production. The end-to-end tests turn it off (they create many accounts).
+      RATE_LIMIT: ${RATE_LIMIT:-true}
     ports:
       # The app reaches the API through "web" (/api). This port is for a proxy or tools on the
       # host: loopback only by default. A client that reaches the backend without a proxy could
@@ -67,6 +56,3 @@ services:
         condition: service_healthy
     ports:
       - "${APP_PORT:-9292}:80"
-
-volumes:
-  db-data:

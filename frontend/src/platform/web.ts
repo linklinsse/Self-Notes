@@ -83,6 +83,10 @@ export const webPlatform: Platform = {
     // The browser uses <meta name="theme-color">, set by applyTheme().
   },
 
+  refreshWidgets() {
+    // No home-screen widgets on the web.
+  },
+
   onDeepLink() {
     // Web links are plain URLs: the router handles them.
   },

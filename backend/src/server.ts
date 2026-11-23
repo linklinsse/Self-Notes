@@ -1,9 +1,11 @@
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
+import { enableWal } from './db.js';
 import { APP_VERSION } from './version.js';
 
 const config = loadConfig();
 const app = await buildApp(config);
+await enableWal(app.prisma);
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, () => {

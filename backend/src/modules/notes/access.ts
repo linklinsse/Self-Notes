@@ -8,6 +8,11 @@ import { forbidden, notFound } from '../../errors.js';
 
 const RANK: Record<NoteRole, number> = { viewer: 1, editor: 2, owner: 3 };
 
+/** Owner first, then editors, then viewers (SQLite stores roles as text: sort in the app). */
+export function byRoleDesc(a: { role: NoteRole }, b: { role: NoteRole }): number {
+  return RANK[b.role] - RANK[a.role];
+}
+
 export function hasRole(role: NoteRole, min: NoteRole): boolean {
   return RANK[role] >= RANK[min];
 }
