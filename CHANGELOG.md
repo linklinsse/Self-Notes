@@ -6,6 +6,20 @@ The release pipeline copies the section matching [`VERSION`](VERSION) into the G
 
 ## [Unreleased]
 
+### Added
+- The Note widget shows the note's categories and takes the color of the first one (tint, outline and left bar, like the cards of the app) (WIDGET-5).
+- Widgets refresh when the app leaves the screen, even when it is closed right after a change (WIDGET-8).
+
+### Changed
+- Widgets refresh every 15 minutes instead of 30 (WIDGET-8).
+- Checklists in the Note widget: items can no longer be checked from the widget, and tapping anywhere in the note opens it. Items take one compact line each (WIDGET-6).
+- The header of the widgets is a single smaller line.
+- A single line break in a note is now a line break on screen, in the app, on share links and in the Note widget (NOTE-2). Until now, plain Markdown joined the lines.
+
+### Fixed
+- List widgets: a note with 5 categories did not show its progress.
+- Android 11 and older: after switching a widget to another note, its header changed but its rows stayed those of the old note until the next refresh.
+
 ## [0.2.0] - 2026-11-24
 
 **Upgrading from 0.1.0:** the database is now SQLite, and the PostgreSQL data of 0.1.0 is not carried over: the server starts with an empty database. Remove the `POSTGRES_*` lines from `.env` (see `.env.example` and docs/deployment.md).

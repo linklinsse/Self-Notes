@@ -83,7 +83,7 @@ adb shell am start -a android.intent.action.VIEW -d "selfnotes://notes/new?type=
 adb shell am start -a android.intent.action.VIEW -d "selfnotes://notes/<note id>" app.selfnotes
 ```
 
-**Widgets** are native Kotlin code (`frontend/android/app/src/main/java/app/selfnotes/widget/`, architecture §6.2). Install the debug build, sign in to the app, then long-press the home screen → Widgets → Self-Notes, and drag one out: its setup screen opens. A widget's refresh button refreshes it at once; otherwise WorkManager does every 30 minutes, and the app asks for a refresh after each change. `testDebugUnitTest` also runs the widget tests (Markdown with the shared task-item fixtures, API calls, state changes).
+**Widgets** are native Kotlin code (`frontend/android/app/src/main/java/app/selfnotes/widget/`, architecture §6.2). Install the debug build, sign in to the app, then long-press the home screen → Widgets → Self-Notes, and drag one out: its setup screen opens. A widget's refresh button refreshes it at once; otherwise WorkManager does every 15 minutes, and the app asks for a refresh after each change and when it leaves the screen. `testDebugUnitTest` also runs the widget tests (Markdown with the shared task-item fixtures, API calls, state changes).
 
 The widget setup screens use Jetpack Compose. The Compose BOM is pinned in `variables.gradle` to a version that still builds with `compileSdk 36` and the Android Gradle plugin used by Capacitor 8: newer Compose releases need `compileSdk 37` and AGP 9.1.
 

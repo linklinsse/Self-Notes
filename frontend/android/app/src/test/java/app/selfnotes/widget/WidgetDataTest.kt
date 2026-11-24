@@ -62,11 +62,35 @@ class WidgetDataTest {
     }
 
     @Test
-    fun `WIDGET-6 only owners and editors may check items`() {
-        val note = { role: String -> NoteView.parse("""{"id":"n","title":"T","type":"list","content":"- [ ] a","locked":false,"role":"$role"}""")!! }
-        assertTrue(note("owner").canEdit)
-        assertTrue(note("editor").canEdit)
-        assertEquals(false, note("viewer").canEdit)
+    fun `WIDGET-5 the note carries its categories, in order, with their colors`() {
+        val note = NoteView.parse(
+            """{"id":"n","title":"T","type":"list","content":"- [ ] a","locked":false,"categories":[
+              {"id":"1","name":"Courses","color":"#22C55E"},{"id":"2","name":"Broken","color":"green"},{"id":"3","name":"Maison","color":"#ff4d8d"}
+            ]}""",
+        )!!
+        assertEquals(
+            listOf(WidgetCategory("Courses", 0xFF22C55E.toInt()), WidgetCategory("Maison", 0xFFFF4D8D.toInt())),
+            note.categories,
+        )
+        assertEquals(emptyList<WidgetCategory>(), NoteView.parse("""{"id":"n"}""")!!.categories)
+    }
+
+    @Test
+    fun `CAT-2 chips use black or white text, whichever reads better`() {
+        val black = 0xFF000000.toInt()
+        val white = 0xFFFFFFFF.toInt()
+        assertEquals(black, readableTextOn(0xFF22C55E.toInt()))
+        assertEquals(black, readableTextOn(0xFFFFD32C.toInt()))
+        assertEquals(white, readableTextOn(0xFF1E3A8A.toInt()))
+        assertEquals(black, readableTextOn(white))
+        assertEquals(white, readableTextOn(black))
+    }
+
+    @Test
+    fun `the category tint mixes colors like the app's cards`() {
+        assertEquals(0xFF000000.toInt(), mixColors(0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0.0))
+        assertEquals(0xFF808080.toInt(), mixColors(0xFFFFFFFF.toInt(), 0xFF000000.toInt(), 0.5))
+        assertEquals(0xFF141F1F.toInt(), mixColors(0xFF22C55E.toInt(), 0xFF13131A.toInt(), 0.07))
     }
 
     @Test

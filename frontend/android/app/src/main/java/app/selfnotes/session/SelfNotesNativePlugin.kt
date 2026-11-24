@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.net.Uri
 import androidx.core.graphics.toColorInt
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
 import app.selfnotes.widget.WidgetColors
 import app.selfnotes.widget.WidgetTheme
 import app.selfnotes.widget.WidgetUpdater
@@ -92,12 +93,14 @@ class SelfNotesNativePlugin : Plugin() {
     }
 
     /**
-     * `{ noteId? }`, after the app saved, deleted or left a note (WIDGET-8). Calls that follow each
-     * other within 2 seconds make one refresh, so autosave does not refresh widgets while typing.
+     * `{ noteId? }`, after the app saved, deleted or left a note (WIDGET-8). While the app is on
+     * screen, calls that follow each other within 2 seconds make one refresh, so autosave does not
+     * refresh widgets while typing. Once it left the screen there is no delay: it may be killed.
      */
     @PluginMethod
     fun refreshWidgets(call: PluginCall) {
-        WidgetUpdater.requestRefresh(context, delayMs = 2_000)
+        val onScreen = activity.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+        WidgetUpdater.requestRefresh(context, delayMs = if (onScreen) 2_000 else 0)
         call.resolve()
     }
 

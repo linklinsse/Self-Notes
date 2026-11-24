@@ -103,16 +103,20 @@ Categories are meant to be seen at a glance:
 1. `ThemeProvider` (a React context) resolves the active theme from `preferences.theme`. An unknown id, for example from a theme that was removed (or the old `"system"` choice), falls back to `blushNoir` and never breaks the app.
 2. It writes every token to `:root` as `--sn-*` variables and sets `color-scheme` from `dark`.
 3. It sets `<meta name="theme-color">` to `bgBase`. On Android it also sets the status bar and navigation bar colors (`bgBase`, light or dark icons from `dark`) through Capacitor's `StatusBar` plugin (THEME-4).
-4. On Android it sends the widget colors to the native layer with `SelfNotesNative.setWidgetTheme` (WIDGET-10). `rgba()` values are converted to `#AARRGGBB`:
+4. On Android it sends the widget colors to the native layer with `SelfNotesNative.setWidgetTheme` (WIDGET-10), as CSS colors (`WidgetColors.fromCss` reads `#rrggbb` and `rgba()`):
 
    | Widget part | Token |
    |-------------|-------|
-   | Background | `bgCard` |
-   | Header | `bgSurface` |
-   | Title / main text | `text1` |
-   | Preview / "updated X ago" | `text2` |
-   | Icons, checkboxes, progress | `accent` |
-   | Row separators | `borderSoft` |
+   | Background | `bgSurface` (tinted with the first category's color in a Note widget) |
+   | Cards of the list widgets | `bgCard` |
+   | Header title, + button, list markers, quote bars | `accent` |
+   | Main text | `text1` |
+   | Previews, type icons, refresh button, checked items, "Offline · updated" | `text2` |
+   | Box of a checked item | `checkbox` |
+   | Code background | `codeBg` |
+   | Horizontal rules | `border` |
+   | Buttons | `accentFill`, `onAccentFill` |
+   | Setup screens | all of the above, and `bgBase` as background |
 
 5. The resolved theme id is cached locally so the first render does not flash the wrong colors. Share-link pages use that cached theme (THEME-5).
 

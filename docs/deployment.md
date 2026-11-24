@@ -33,7 +33,7 @@ Then open `PUBLIC_URL` (default http://localhost:9292) and create the first acco
 | `DB_DIR` | `./db` | Host folder of the SQLite database: `prod.db`, plus `prod.db-wal` and `prod.db-shm` while the API runs. Created on first start. At each start the container gives it to the user `node` (uid 1000), which runs the API. |
 | `JWT_SECRET` | **required**, ≥ 32 characters | Secret that signs access tokens (`openssl rand -base64 48`). Changing it makes every current access token invalid; clients get new ones on their next refresh. |
 | `ACCESS_TOKEN_TTL` | `15m` | Access token lifetime |
-| `REFRESH_TOKEN_TTL` | `30d` | Session idle timeout. A session ends after this long **without use**, and every use restarts the countdown. Android widgets refresh every 30 min, so a phone in use stays signed in. |
+| `REFRESH_TOKEN_TTL` | `30d` | Session idle timeout. A session ends after this long **without use**, and every use restarts the countdown. Android widgets refresh every 15 min, so a phone in use stays signed in. |
 | `ALLOW_REGISTRATION` | `true` | `false` closes sign-up: `POST /auth/register` answers `403 REGISTRATION_DISABLED`, `/api/health` reports `registration: false`, and the login page no longer offers to create an account. Existing accounts keep working. |
 | `CORS_ORIGINS` | `https://localhost,http://localhost` | Extra allowed origins. The Android WebView origin is `https://localhost`. Also add the origin of any other web front whose users pick this server on their login page. |
 | `LOG_LEVEL` | `info` | Backend log level |

@@ -3,6 +3,7 @@ import { type ChangeEvent, useMemo } from 'react';
 import Markdown, { type Components, defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { remarkAddresses } from './addresses';
+import { remarkLineBreaks } from './breaks';
 import { MermaidDiagram } from './Mermaid';
 import { remarkPhones } from './phones';
 import { parseTaskItems } from './tasklist';
@@ -58,8 +59,8 @@ const components: Components = {
 
 // Addresses first: their postal codes and numbers are never taken for phone numbers.
 const plugins = [remarkGfm, remarkAddresses, remarkPhones];
-// Full notes also get heading anchors and the table of contents (NOTE-18).
-const notePlugins = [remarkGfm, remarkToc, remarkAddresses, remarkPhones];
+// Full notes also get heading anchors, the table of contents (NOTE-18) and line breaks as typed (NOTE-2).
+const notePlugins = [remarkGfm, remarkToc, remarkAddresses, remarkPhones, remarkLineBreaks];
 
 /**
  * rehype plugin: gives each task checkbox the source line of its list item (data-line, 1-based),

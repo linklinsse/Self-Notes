@@ -3,7 +3,6 @@ package app.selfnotes.widget
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -20,10 +19,11 @@ class WidgetMarkdownTest {
             val expected = case.getJSONArray("items").let { items ->
                 (0 until items.length()).map { j ->
                     val item = items.getJSONObject(j)
-                    TaskItem(item.getInt("line"), item.getBoolean("checked"), item.getString("text"))
+                    item.getBoolean("checked") to WidgetMarkdown.stripInline(item.getString("text"))
                 }
             }
-            assertEquals(case.getString("name"), expected, WidgetMarkdown.taskItems(case.getString("content")))
+            val tasks = WidgetMarkdown.parse(case.getString("content")).blocks.filterIsInstance<WidgetBlock.Task>()
+            assertEquals(case.getString("name"), expected, tasks.map { it.checked to it.text })
         }
     }
 
@@ -46,8 +46,8 @@ class WidgetMarkdownTest {
         assertEquals(
             listOf(
                 WidgetBlock.Heading(1, "Courses urgent"),
-                WidgetBlock.Paragraph("Some link and code on two lines."),
-                WidgetBlock.ListItem("•", "Bread more about bread", 0),
+                WidgetBlock.Paragraph("Some link and code\non two lines."),
+                WidgetBlock.ListItem("•", "Bread\nmore about bread", 0),
                 WidgetBlock.ListItem("2.", "Second", 0),
                 WidgetBlock.Quote("Quoted text"),
                 WidgetBlock.Rule,
@@ -58,13 +58,13 @@ class WidgetMarkdownTest {
     }
 
     @Test
-    fun `WIDGET-6 task blocks carry the index and raw text used by the toggle endpoint`() {
+    fun `WIDGET-6 task blocks carry their state and depth`() {
         val blocks = WidgetMarkdown.parse("```\n- [ ] code\n```\n- [ ] **Milk**\n  - [x] Bread").blocks
         assertEquals(
             listOf(
                 WidgetBlock.Code("- [ ] code"),
-                WidgetBlock.Task(0, "**Milk**", "Milk", false, 0),
-                WidgetBlock.Task(1, "Bread", "Bread", true, 1),
+                WidgetBlock.Task("Milk", false, 0),
+                WidgetBlock.Task("Bread", true, 1),
             ),
             blocks,
         )
@@ -100,10 +100,14 @@ class WidgetMarkdownTest {
     }
 
     @Test
-    fun `setChecked changes only the item at that index`() {
-        assertEquals("- [ ] A\n- [x] B", WidgetMarkdown.setChecked("- [ ] A\n- [ ] B", 1, true))
-        assertEquals("- [ ] A\r\n- [ ] B", WidgetMarkdown.setChecked("- [x] A\r\n- [ ] B", 0, false))
-        assertNull(WidgetMarkdown.setChecked("- [ ] A", 3, true))
+    fun `NOTE-2 a single line break is kept, and emphasis may span it`() {
+        assertEquals(
+            listOf(
+                WidgetBlock.Paragraph("One\ntwo bold\nwords end\nlast"),
+                WidgetBlock.Quote("First\nsecond"),
+            ),
+            WidgetMarkdown.parse("One  \ntwo **bold\nwords** end\\\r\nlast\n\n> First\n> second").blocks,
+        )
     }
 
     @Test

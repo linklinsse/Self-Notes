@@ -54,7 +54,7 @@ flowchart LR
 
 - **Access token**: a JWT signed with `JWT_SECRET`, valid for `ACCESS_TOKEN_TTL` (default 15 min). It is sent as `Authorization: Bearer <token>` and kept **in memory** on the client.
 - **Refresh token**: 256 random bits. Only its SHA-256 hash is stored, in `sessions`. It is **replaced on every refresh**.
-- **Sliding expiry (no daily login).** Every refresh issues a new token valid for `REFRESH_TOKEN_TTL` (default **30 days**) from that moment. There is no absolute maximum, so a session ends only after 30 days without use, on logout, or on a password change. On Android, the widgets' 30-minute refresh counts as use, so the phone stays signed in (AUTH-4, WIDGET-9).
+- **Sliding expiry (no daily login).** Every refresh issues a new token valid for `REFRESH_TOKEN_TTL` (default **30 days**) from that moment. There is no absolute maximum, so a session ends only after 30 days without use, on logout, or on a password change. On Android, the widgets' 15-minute refresh counts as use, so the phone stays signed in (AUTH-4, WIDGET-9).
 - **Theft detection, with a grace period for bad networks.** If a refresh token that was already replaced is used again, the server normally revokes the whole session family. There is one exception: the token was replaced **less than 2 minutes ago** and its replacement has **never been used**. That is the usual sign of a response lost on a mobile network, not of theft. In that case the server revokes the unused replacement and issues a new token, so the user is not logged out.
 - **How the refresh token is carried**, chosen by the client with the `X-Token-Transport` header:
   - **cookie** (default, web on the same origin): an `httpOnly`, `SameSite=Strict` cookie (`Secure` over HTTPS), scoped to `/api/v1/auth`;
@@ -150,10 +150,12 @@ All of it lives in `widget/`, next to `session/`.
 - Both list widgets share one implementation, `NotesListWidget` (`NotesByTypeWidget` is a subclass, so that each receiver has its own class). The type filter is part of the configuration.
 - **Configuration:** when a widget is placed, the launcher opens `NotesListConfigActivity` (scope, type, category) or `NoteConfigActivity` (searchable note picker). These screens are Jetpack Compose, in the theme's colors. They only accept this app's widget ids. Android 12+ can reopen them later (`reconfigurable`); the Note widget's "Pick another note" button opens the picker too (WIDGET-11).
 - **State:** each widget keeps its own Glance state (a small DataStore per widget id, `WidgetState.kt`): configuration, last API answer, status (`OK`, `SIGNED_OUT`, `UNAVAILABLE`…), when it was received, and the theme colors. Widgets draw only from this state, so they render instantly and still work offline. Signed out, the data is removed from it.
-- **Data:** `WidgetApi` calls `GET /notes` (summaries, `limit=50`), `GET /notes/{id}`, `POST /notes/{id}/items/toggle` and `GET /categories`, with an access token from `SessionStore`. A refused access token is refreshed once, under the session mutex.
-- **Refresh:** `WidgetUpdater` fetches and redraws. A periodic `WidgetRefreshWorker` (WorkManager, every 30 min, only with a network) runs while at least one widget exists. A one-time run happens on demand: `refreshWidgets()`, sign-in, sign-out, server change, the end of a setup screen, and after a checkbox toggled in a widget (for the other widgets). The refresh button refreshes its own widget at once.
-- **Checkbox toggle:** a Glance `ActionCallback` (`ToggleItemAction`) checks the item in the widget's state at once, calls `POST /notes/{id}/items/toggle`, then redraws from the answer. If the server refuses or cannot be reached, the item goes back; if the note changed meanwhile (`ITEM_NOT_FOUND`), the widget reloads it.
-- **Markdown:** `WidgetMarkdown`, a small Kotlin parser that keeps blocks only (WIDGET-5), at most 200 per note. Task items are found exactly like the TypeScript parsers: the three implementations run the same fixtures (`frontend/src/markdown/task-items.fixtures.json`).
+- **Data:** `WidgetApi` only reads: `GET /notes` (summaries, `limit=50`), `GET /notes/{id}` and `GET /categories`, with an access token from `SessionStore`. A refused access token is refreshed once, under the session mutex.
+- **Refresh:** `WidgetUpdater` fetches and redraws. A periodic `WidgetRefreshWorker` (WorkManager, every 15 min, only with a network) runs while at least one widget exists. A one-time run happens on demand: `refreshWidgets()`, sign-in, sign-out, server change and the end of a setup screen. The refresh button refreshes its own widget at once.
+- **Leaving the app:** `MainActivity.onStop` asks for a run itself, because the page may be frozen or killed before it can. The page saves its draft when it is hidden; when that save ends it calls `refreshWidgets()`, which has no delay once the app is off screen. Runs without a delay are expedited on Android 12+, so they start even when the app was just swiped away.
+- **Checklists:** items are drawn with an image and a text, not with a `CheckBox`: Android 12+ gives every `CheckBox` a height of 48 dp. Every block opens the note (WIDGET-6).
+- **Colors of a note:** the Note widget's frame is the color of the note's first category, with the surface tinted 7% with it on top (same tint as the app's cards); chips use black or white text, whichever reads better.
+- **Markdown:** `WidgetMarkdown`, a small Kotlin parser that keeps blocks and line breaks only (WIDGET-5), at most 200 blocks per note. Task items are found exactly like the TypeScript parsers: the three implementations run the same fixtures (`frontend/src/markdown/task-items.fixtures.json`).
 - **Rounded corners:** Android 12+ rounds views itself; on older versions the backgrounds are shape drawables tinted with the theme.
 - **Opening the app:** deep links `selfnotes://notes/{id}` and `selfnotes://notes/new?type=list|text` (intent filter without `BROWSABLE`, so web pages cannot fire them). Capacitor's `App` plugin delivers them through `appUrlOpen`, including the link that launched the app. `src/platform/deepLinks.ts` turns them into routes (`/notes/{id}`, or `/notes/new?type=…`, which creates the note and opens it). Signed out, the route goes through the login page first.
 - **Theme:** `setWidgetTheme` saves the resolved theme colors natively and copies them into every widget's state, which redraws them without a network call (WIDGET-10).
@@ -161,7 +163,7 @@ All of it lives in `widget/`, next to `session/`.
 
 ```mermaid
 sequenceDiagram
-    participant WM as WorkManager (30 min)
+    participant WM as WorkManager (15 min)
     participant R as WidgetUpdater
     participant S as SessionStore
     participant API as Backend

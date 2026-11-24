@@ -105,7 +105,7 @@ Base path: **`/api/v1`**. JSON everywhere. In development (`NODE_ENV=development
 | POST | `/notes` | | `{ title?, type, content?, categoryIds?, pinned? }` | `201 Note` (the caller is the owner) |
 | GET | `/notes/{id}` | viewer | | `Note` |
 | PATCH | `/notes/{id}` | editor | `{ version, title?, type?, content? }` | `Note` with `version + 1`, or `409` |
-| POST | `/notes/{id}/items/toggle` | editor | `{ index, text, checked }` | `Note`. `index` is the item's position among task items, and `text` is its text when the client read it. The server finds the item (same index and text, or else the only item with that text), so no `version` is needed. Returns `409 ITEM_NOT_FOUND` if the item is gone. Used by the app and the widgets. |
+| POST | `/notes/{id}/items/toggle` | editor | `{ index, text, checked }` | `Note`. `index` is the item's position among task items, and `text` is its text when the client read it. The server finds the item (same index and text, or else the only item with that text), so no `version` is needed. Returns `409 ITEM_NOT_FOUND` if the item is gone. |
 | DELETE | `/notes/{id}` | owner | | `204`. Removes the note for everyone and invalidates its links. |
 | PUT | `/notes/{id}/pinned` | viewer | `{ pinned }` | `204` (per user). Shown as **Favorites** in the app (NOTE-11). |
 | PUT | `/notes/{id}/categories` | viewer | `{ categoryIds: [] }` | `204`. Replaces the caller's own categories on this note. |

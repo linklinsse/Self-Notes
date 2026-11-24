@@ -1,7 +1,9 @@
 package app.selfnotes.widget
 
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
+import android.os.Build
 import androidx.datastore.preferences.core.MutablePreferences
 import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
@@ -15,6 +17,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -22,16 +25,28 @@ import app.selfnotes.session.SessionStore
 import java.util.concurrent.TimeUnit
 
 /**
- * Fetches widget data and redraws widgets (architecture §6.2, WIDGET-8): every 30 minutes while
- * online, on demand from the app (`refreshWidgets`, sign-in and sign-out), and from each widget's
- * refresh button.
+ * Fetches widget data and redraws widgets (architecture §6.2, WIDGET-8): every 15 minutes while
+ * online, when the app leaves the screen, on demand from the app (`refreshWidgets`, sign-in and
+ * sign-out), and from each widget's refresh button.
  */
 object WidgetUpdater {
     private const val PERIODIC_WORK = "selfnotes.widgets.periodic"
     private const val NOW_WORK = "selfnotes.widgets.now"
 
-    /** WIDGET-8. WorkManager's minimum period is 15 minutes. */
-    private const val PERIOD_MINUTES = 30L
+    /** WIDGET-8. The shortest period Android allows for background work. */
+    private const val PERIOD_MINUTES = 15L
+
+    private val receivers = listOf(
+        NotesListWidgetReceiver::class.java,
+        NotesByTypeWidgetReceiver::class.java,
+        NoteWidgetReceiver::class.java,
+    )
+
+    /** Cheap check, so that the app schedules nothing when no widget is placed. */
+    private fun hasWidgets(context: Context): Boolean {
+        val manager: AppWidgetManager = AppWidgetManager.getInstance(context) ?: return false
+        return receivers.any { manager.getAppWidgetIds(ComponentName(context, it)).isNotEmpty() }
+    }
 
     /** The widget behind each receiver. */
     private fun widgetFor(receiverClassName: String?): GlanceAppWidget? =
@@ -65,14 +80,17 @@ object WidgetUpdater {
     suspend fun refresh(context: Context, widget: GlanceAppWidget, glanceId: GlanceId) {
         val prefs = getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId)
         val config = WidgetConfig.fromJson(prefs[WidgetKeys.CONFIG]) ?: return // not configured yet
-        val api = WidgetApi(SessionStore.get(context))
-        val result: ApiResult<String> =
-            when (config) {
-                is WidgetConfig.NotesList -> api.listNotes(config).map { it.toString() }
-                is WidgetConfig.Note -> api.getNote(config.noteId).map { it.toString() }
-            }
-        store(context, glanceId, result)
+        store(context, glanceId, fetch(context, config))
         widget.update(context, glanceId)
+    }
+
+    /** What a widget with this configuration shows, from the server. */
+    suspend fun fetch(context: Context, config: WidgetConfig): ApiResult<String> {
+        val api = WidgetApi(SessionStore.get(context))
+        return when (config) {
+            is WidgetConfig.NotesList -> api.listNotes(config).map { it.toString() }
+            is WidgetConfig.Note -> api.getNote(config.noteId).map { it.toString() }
+        }
     }
 
     /** Saves the outcome of a fetch in the widget's state. */
@@ -122,22 +140,34 @@ object WidgetUpdater {
     }
 
     /**
-     * Refreshes every widget soon. Calls within [delayMs] replace each other, so that autosaving
-     * while typing does not refresh the widgets every second.
+     * Refreshes every widget: now, or after [delayMs]. A new call replaces the one before, so that
+     * autosaving while typing does not refresh the widgets every second.
+     *
+     * Without a delay the work is expedited (Android 12+): it starts at once even when the app was
+     * just closed, instead of waiting for the system to find time for it. Older versions would need
+     * a notification for that, and start plain work quickly anyway.
      */
     fun requestRefresh(context: Context, delayMs: Long = 0) {
-        val request = OneTimeWorkRequestBuilder<WidgetRefreshWorker>()
-            .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
-            .build()
+        if (!hasWidgets(context)) return
+        val request = OneTimeWorkRequestBuilder<WidgetRefreshWorker>().apply {
+            if (delayMs > 0) {
+                setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            }
+        }.build()
         WorkManager.getInstance(context).enqueueUniqueWork(NOW_WORK, ExistingWorkPolicy.REPLACE, request)
     }
 
-    /** Starts the 30-minute refresh while at least one widget exists. */
+    /**
+     * Starts the 15-minute refresh while at least one widget exists. UPDATE: a phone that already
+     * runs it with an older period gets the new one, without restarting the countdown.
+     */
     fun schedulePeriodic(context: Context) {
         val request = PeriodicWorkRequestBuilder<WidgetRefreshWorker>(PERIOD_MINUTES, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        WorkManager.getInstance(context).enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.KEEP, request)
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(PERIODIC_WORK, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 
     /** Called when the last widget of a kind is removed: stops the refresh if none is left at all. */

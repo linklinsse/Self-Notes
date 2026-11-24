@@ -29,6 +29,8 @@ import kotlinx.coroutines.launch
 
 /** Setup of the Notes and Notes by type widgets (WIDGET-1, WIDGET-2): scope, type, category. */
 class NotesListConfigActivity : ComponentActivity() {
+    private var saving = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val appWidgetId = WidgetSetup.widgetId(this) ?: return finish()
@@ -42,7 +44,9 @@ class NotesListConfigActivity : ComponentActivity() {
                 NotesListSetup(
                     byType = byType,
                     loadCurrent = { WidgetSetup.currentConfig(this, appWidgetId) as? WidgetConfig.NotesList },
-                    onSave = { config ->
+                    onSave = save@{ config ->
+                        if (saving) return@save
+                        saving = true
                         lifecycleScope.launch {
                             WidgetSetup.save(this@NotesListConfigActivity, appWidgetId, config)
                             setResult(RESULT_OK, WidgetSetup.result(appWidgetId))

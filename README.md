@@ -10,7 +10,7 @@ Self-hosted notes app with a web front, a REST API, and an Android app (APK).
   - with **another user**, as **read-only** or **edit**;
   - with **anyone holding a link**, as **read-only** or **edit** (links can be revoked or given an expiry date).
 - **Accounts**: username and password (no email), with the **server URL editable on the login page**. You stay signed in: a session only ends after 30 days without use. Your chosen **theme** follows you on every device.
-- **Android widgets**: a list of notes, a list of notes of one type, and the content of one note (list items can be checked from the widget).
+- **Android widgets**: a list of notes, a list of notes of one type, and the content of one note.
 - **One command to run it**: `docker compose up` starts the database, the API and the web app.
 - **Android APK** built and published by GitHub Actions. The app's version comes from the [`VERSION`](VERSION) file.
 

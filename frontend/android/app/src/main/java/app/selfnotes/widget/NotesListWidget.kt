@@ -108,11 +108,13 @@ private fun NoteRowView(row: NoteRow, colors: WidgetColors) {
             }
             if (row.categoryColors.isNotEmpty() || row.total != null) {
                 Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    row.categoryColors.take(5).forEach { color ->
-                        WidgetIcon(R.drawable.ic_widget_dot, color, size = 9)
-                        Spacer(modifier = GlanceModifier.width(4.dp))
+                    // A row of its own: Glance drops the children of a row after the 10th.
+                    Row(modifier = GlanceModifier.defaultWeight(), verticalAlignment = Alignment.CenterVertically) {
+                        row.categoryColors.take(5).forEach { color ->
+                            WidgetIcon(R.drawable.ic_widget_dot, color, size = 9)
+                            Spacer(modifier = GlanceModifier.width(4.dp))
+                        }
                     }
-                    Spacer(modifier = GlanceModifier.defaultWeight())
                     if (row.total != null && row.total > 0) {
                         Text(
                             text = "${row.checked ?: 0}/${row.total}",

@@ -30,6 +30,7 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -56,7 +57,7 @@ fun GlanceModifier.rounded(color: Int, radius: Int): GlanceModifier =
         background(color.provider()).cornerRadius(radius.dp)
     } else {
         val shape = when {
-            radius >= 20 -> R.drawable.widget_round_20
+            radius >= 18 -> R.drawable.widget_round_20
             radius >= 12 -> R.drawable.widget_round_12
             else -> R.drawable.widget_round_8
         }
@@ -75,27 +76,64 @@ object WidgetIntents {
         Intent(context, MainActivity::class.java).setAction(Intent.ACTION_VIEW).setData("selfnotes://notes/new?type=${type.api}".toUri())
 }
 
-/** The widget's rounded background. */
+/**
+ * The widget's rounded background. With [accent] (the color of a note's first category), it is
+ * tinted and outlined with it, with a thick left bar, like the cards of the app's grid.
+ */
 @Composable
-fun WidgetFrame(colors: WidgetColors, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = GlanceModifier
-            .fillMaxSize()
-            .appWidgetBackground()
-            .rounded(colors.surface, 20)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        content = content,
-    )
+fun WidgetFrame(colors: WidgetColors, accent: Int? = null, content: @Composable ColumnScope.() -> Unit) {
+    val root = GlanceModifier.fillMaxSize().appWidgetBackground()
+    if (accent == null) {
+        Column(modifier = root.rounded(colors.surface, 20).padding(horizontal = 8.dp, vertical = 4.dp), content = content)
+        return
+    }
+    Box(modifier = root.rounded(accent, 20).padding(start = 5.dp, top = 1.dp, end = 1.dp, bottom = 1.dp)) {
+        Column(
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .rounded(mixColors(accent, colors.surface, CATEGORY_TINT), 19)
+                .padding(horizontal = 7.dp, vertical = 3.dp),
+            content = content,
+        )
+    }
 }
 
-/** Title, then the + and refresh buttons (WIDGET-7). */
+/** Same tint as the cards of the app (CARD_CATEGORY_TINT, frontend/src/themes/tokens.ts). */
+private const val CATEGORY_TINT = 0.07
+
+/** A note's categories, as the app's chips: at most 3, then "+2". */
+@Composable
+fun CategoryChips(categories: List<WidgetCategory>) {
+    if (categories.isEmpty()) return
+    Row(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        categories.take(MAX_CHIPS).forEach { category ->
+            Text(
+                text = category.name,
+                maxLines = 1,
+                style = TextStyle(color = readableTextOn(category.color).provider(), fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                modifier = GlanceModifier.rounded(category.color, 8).padding(horizontal = 7.dp, vertical = 1.dp),
+            )
+            Spacer(modifier = GlanceModifier.width(4.dp))
+        }
+        if (categories.size > MAX_CHIPS) {
+            Text(
+                text = "+${categories.size - MAX_CHIPS}",
+                style = TextStyle(color = categories[MAX_CHIPS].color.provider(), fontSize = 11.sp, fontWeight = FontWeight.Bold),
+            )
+        }
+    }
+}
+
+private const val MAX_CHIPS = 3
+
+/** One line: title, then the + and refresh buttons (WIDGET-7). */
 @Composable
 fun WidgetHeader(title: String, colors: WidgetColors, onTitle: Action, newNote: Action?) {
-    Row(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = title,
             maxLines = 1,
-            style = TextStyle(color = colors.accent.provider(), fontSize = 15.sp, fontWeight = FontWeight.Bold),
+            style = TextStyle(color = colors.accent.provider(), fontSize = 13.sp, fontWeight = FontWeight.Bold),
             modifier = GlanceModifier.defaultWeight().clickable(onTitle),
         )
         if (newNote != null) {
@@ -107,12 +145,12 @@ fun WidgetHeader(title: String, colors: WidgetColors, onTitle: Action, newNote: 
 
 @Composable
 private fun IconButton(icon: Int, description: String, tint: Int, onClick: Action) {
-    Box(modifier = GlanceModifier.size(36.dp).cornerRadius(18.dp).clickable(onClick), contentAlignment = Alignment.Center) {
+    Box(modifier = GlanceModifier.width(32.dp).height(24.dp).cornerRadius(12.dp).clickable(onClick), contentAlignment = Alignment.Center) {
         Image(
             provider = ImageProvider(icon),
             contentDescription = description,
             colorFilter = ColorFilter.tint(tint.provider()),
-            modifier = GlanceModifier.size(22.dp),
+            modifier = GlanceModifier.size(16.dp),
         )
     }
 }
