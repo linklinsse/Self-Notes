@@ -6,6 +6,8 @@ The release pipeline copies the section matching [`VERSION`](VERSION) into the G
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-25
+
 ### Added
 - The Note widget shows the note's categories and takes the color of the first one (tint, outline and left bar, like the cards of the app) (WIDGET-5).
 - Widgets refresh when the app leaves the screen, even when it is closed right after a change (WIDGET-8).
