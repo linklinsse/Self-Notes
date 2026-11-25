@@ -45,10 +45,10 @@
 - [x] Keystore and GitHub secrets set up, first **Release APK** run → `v0.1.0` (2026-11-22)
 
 ### M5: Android widgets ✅ (0.2.0)
-- [x] Glance + WorkManager setup, per-widget state, 30-min refresh worker
+- [x] Glance + WorkManager setup, per-widget state, refresh worker (30 min, 15 min since 0.3.0)
 - [x] **Notes** widget with its configuration (scope, category)
 - [x] **Notes by type** widget (type, scope, category)
-- [x] **Note** widget: note picker, simplified Markdown, checkbox toggle (every Android version), "Note unavailable" state
+- [x] **Note** widget: note picker, simplified Markdown, checkbox toggle (removed in 0.3.0: a tap opens the note), "Note unavailable" state
 - [x] Signed-out state, theme colors, refresh triggered by the app (`refreshWidgets`)
 - [x] Locked notes (NOTE-17) show their title and a lock, never their content
 - [x] JVM tests (Markdown with the shared fixtures, API calls, state changes); checked on an Android 11 emulator

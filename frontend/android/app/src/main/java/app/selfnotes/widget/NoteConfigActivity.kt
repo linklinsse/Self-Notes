@@ -46,6 +46,8 @@ import kotlinx.coroutines.launch
  * "Pick another note" button of a widget whose note is unavailable (WIDGET-11).
  */
 class NoteConfigActivity : ComponentActivity() {
+    private var saving = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val appWidgetId = WidgetSetup.widgetId(this) ?: return finish()
@@ -55,7 +57,9 @@ class NoteConfigActivity : ComponentActivity() {
         setContent {
             ConfigTheme(colors) {
                 NotePicker(
-                    onPick = { noteId ->
+                    onPick = pick@{ noteId ->
+                        if (saving) return@pick
+                        saving = true
                         lifecycleScope.launch {
                             WidgetSetup.save(this@NoteConfigActivity, appWidgetId, WidgetConfig.Note(noteId))
                             setResult(RESULT_OK, WidgetSetup.result(appWidgetId))

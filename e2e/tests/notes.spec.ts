@@ -35,6 +35,15 @@ test('NOTE-1 NOTE-3 NOTE-13: a text note autosaves its Markdown and renders it',
   await expect(card(page, 'Recette')).toContainText('Farine');
 });
 
+test('NOTE-2: a single line break in the source is a line break on screen', async ({ page }) => {
+  const note = await createNote(user, { title: 'Adresse', content: 'Jean Dupont\n3 place Bellecour\n69002 Lyon\n\nUn autre paragraphe' });
+  await page.goto(`/notes/${note.id}`);
+  const paragraph = page.locator('.markdown p').first();
+  await expect(paragraph).toBeVisible();
+  expect((await paragraph.innerText()).split('\n')).toEqual(['Jean Dupont', '3 place Bellecour', '69002 Lyon']);
+  await expect(page.locator('.markdown p')).toHaveCount(2);
+});
+
 test('NOTE-4 NOTE-5: a checklist keeps its items and shows its progress', async ({ page }) => {
   await page.getByRole('button', { name: 'New note' }).click();
   await page.getByRole('button', { name: 'Checklist' }).click();

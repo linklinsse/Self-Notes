@@ -30,7 +30,7 @@ This document defines **what** Self-Notes does. Requirement IDs (`NOTE-3`, `SHAR
 | ID | Requirement |
 |----|-------------|
 | NOTE-1 | A user can create a note with a **title** (optional, up to 200 characters) and a **type**: `text` or `list`. |
-| NOTE-2 | Note content is **Markdown** in GitHub Flavored Markdown (GFM): headings, emphasis, links, code, tables, strikethrough and task items. Raw HTML is **not** rendered. Content is limited to 1 MB. |
+| NOTE-2 | Note content is **Markdown** in GitHub Flavored Markdown (GFM): headings, emphasis, links, code, tables, strikethrough and task items. A single line break in the source is a line break on screen (except in code). Raw HTML is **not** rendered. Content is limited to 1 MB. |
 | NOTE-3 | A **text** note has a Markdown editor with **Edit** and **Preview** modes. |
 | NOTE-4 | A **list** note is shown as a checklist: add, edit, reorder, delete and **check/uncheck** items. Each item's text may contain inline Markdown. A **progress bar** with "checked/total" shows how much is done, on the note's card and at the top of the note itself (editing, read-only and share links, NOTE-20). |
 | NOTE-5 | A list note is stored as Markdown task items (`- [ ] item` / `- [x] item`), one per line. Lines that are not task items are kept as they are. |
@@ -116,10 +116,10 @@ Home-screen widgets in the APK. They are native Android code (not the WebView) a
 | WIDGET-2 | **Notes by type** widget: the same list, limited to one type (**text** or **list**) chosen when placed. It has the same optional scope and category. |
 | WIDGET-3 | **Note** widget: the content of one note, chosen when placed from a searchable list of the user's notes. |
 | WIDGET-4 | Each list row shows the title (or the first line if there is no title), a short preview, category colors and a type icon. List notes also show progress (`3/7`). Pinned notes come first, then the most recently updated, up to 50 notes. |
-| WIDGET-5 | The Note widget shows the title, then the content as **simplified Markdown**. Block structure is kept: headings, paragraphs, bullet and numbered lists, task items, and code in monospace. Inline formatting (bold, italics, links) is shown as plain text. Long content scrolls. |
-| WIDGET-6 | When the Note widget shows a **list** note, the user can **check and uncheck items** directly in the widget, on every supported Android version. This needs the `owner` or `editor` role; viewers see the checkboxes as read-only. |
+| WIDGET-5 | The Note widget shows the title on one line, the note's **categories** (colored chips), then the content as **simplified Markdown**. It is tinted and outlined with the color of the first category, like the cards of the app. Block structure and line breaks are kept: headings, paragraphs, bullet and numbered lists, task items, and code in monospace. Inline formatting (bold, italics, links) is shown as plain text. Long content scrolls. |
+| WIDGET-6 | Checklists are shown on compact lines: a small box for the state, checked items struck through. Items are **not** checked from the widget: tapping anywhere in the note opens it in the app. |
 | WIDGET-7 | Tapping a note opens it in the app. A **+** button creates a new note, using the widget's type for Notes by type. A refresh button reloads the data. |
-| WIDGET-8 | Widgets refresh **every 30 minutes** when the device is online. They also refresh immediately when the app saves a note, when the session or theme changes, and when the refresh button is tapped. When offline they keep showing the last data, with the time it was received ("Offline · updated 14:05"). |
+| WIDGET-8 | Widgets refresh **every 15 minutes** when the device is online (the shortest period Android allows), and **when the app leaves the screen** (Home, another app, closed from Recents). They also refresh when the app saves a note, when the session or theme changes, and when the refresh button is tapped. When offline they keep showing the last data, with the time it was received ("Offline · updated 14:05"). |
 | WIDGET-9 | **No daily login:** widgets use the app's session, and their periodic refresh keeps that session alive (AUTH-4). If the user logs out or the session ends, widgets show "Sign in to Self-Notes" and open the app when tapped. |
 | WIDGET-10 | Widgets use the colors of the user's current theme. |
 | WIDGET-11 | If the note behind a Note widget is deleted or no longer shared with the user, the widget shows "Note unavailable" with a button to pick another note. |

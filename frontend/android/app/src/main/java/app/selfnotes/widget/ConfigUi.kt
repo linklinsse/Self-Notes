@@ -35,6 +35,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.updateAppWidgetState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Material colors from the app's theme (WIDGET-10), so that the setup screens look like the app. */
 @Composable
@@ -151,10 +155,18 @@ object WidgetSetup {
         return WidgetConfig.fromJson(prefs[WidgetKeys.CONFIG])
     }
 
-    /** Saves the configuration, shows "Loading…" at once, and asks for the data. */
+    /**
+     * Saves the configuration together with its data, so that the widget goes straight from the old
+     * content to the new one. Through "Loading…" its list would disappear for a moment, and Android
+     * 11 and older draw a list that comes back within 5 seconds with its old rows. "Loading…" only
+     * shows when the server is slow.
+     */
     suspend fun save(context: Context, appWidgetId: Int, config: WidgetConfig) {
         val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
         val theme = WidgetTheme.load(context).toJson()
+        // In its own scope: a blocking network call cannot be cancelled, only left behind.
+        val fetching = CoroutineScope(Dispatchers.IO).async { WidgetUpdater.fetch(context, config) }
+        val result = withTimeoutOrNull(FETCH_TIMEOUT_MS) { fetching.await() }
         updateAppWidgetState(context, glanceId) { prefs ->
             prefs[WidgetKeys.CONFIG] = config.toJson()
             prefs[WidgetKeys.THEME] = theme
@@ -162,9 +174,12 @@ object WidgetSetup {
             prefs[WidgetKeys.STALE] = false
             prefs.remove(WidgetKeys.DATA)
             prefs.remove(WidgetKeys.UPDATED_AT)
+            if (result != null) WidgetUpdater.apply(prefs, result, theme, System.currentTimeMillis())
         }
         WidgetUpdater.widgetOf(context, glanceId)?.update(context, glanceId)
         WidgetUpdater.schedulePeriodic(context)
-        WidgetUpdater.requestRefresh(context)
+        if (result == null) WidgetUpdater.requestRefresh(context)
     }
+
+    private const val FETCH_TIMEOUT_MS = 4_000L
 }

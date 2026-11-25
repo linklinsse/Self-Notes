@@ -99,6 +99,8 @@ data class NoteRow(
     }
 }
 
+data class WidgetCategory(val name: String, val color: Int)
+
 /** The note shown by a Note widget, from `GET /notes/{id}`. */
 data class NoteView(
     val id: String,
@@ -106,22 +108,25 @@ data class NoteView(
     val isList: Boolean,
     val content: String,
     val locked: Boolean,
-    /** WIDGET-6: owners and editors check items; viewers only see them. */
-    val canEdit: Boolean,
+    /** The reader's own categories on the note (CAT-4). */
+    val categories: List<WidgetCategory>,
 ) {
     companion object {
         fun parse(json: String?): NoteView? {
             if (json.isNullOrBlank()) return null
             return try {
                 val o = JSONObject(json)
-                val role = o.optString("role")
+                val categories = o.optJSONArray("categories") ?: JSONArray()
                 NoteView(
                     id = o.getString("id"),
                     title = o.optString("title").trim(),
                     isList = o.optString("type") == "list",
                     content = o.optString("content"),
                     locked = o.optBoolean("locked"),
-                    canEdit = role == "owner" || role == "editor",
+                    categories = (0 until categories.length()).mapNotNull { i ->
+                        val category = categories.optJSONObject(i) ?: return@mapNotNull null
+                        CssColor.parse(category.optString("color"))?.let { WidgetCategory(category.optString("name"), it) }
+                    },
                 )
             } catch (_: JSONException) {
                 null

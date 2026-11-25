@@ -147,3 +147,25 @@ object CssColor {
 
     private fun String.dup(at: Int): Int = "${this[at]}${this[at]}".toInt(16)
 }
+
+/** [over] laid on [base] with the given opacity (CSS `color-mix`). Both opaque. */
+fun mixColors(over: Int, base: Int, ratio: Double): Int {
+    fun channel(shift: Int): Int {
+        val o = (over shr shift) and 0xFF
+        val b = (base shr shift) and 0xFF
+        return (o * ratio + b * (1 - ratio) + 0.5).toInt()
+    }
+    return (0xFF shl 24) or (channel(16) shl 16) or (channel(8) shl 8) or channel(0)
+}
+
+/** CAT-2: black or white text, whichever reads better (frontend/src/themes/contrast.ts). */
+fun readableTextOn(color: Int): Int {
+    fun linear(shift: Int): Double {
+        val c = ((color shr shift) and 0xFF) / 255.0
+        return if (c <= 0.03928) c / 12.92 else Math.pow((c + 0.055) / 1.055, 2.4)
+    }
+    val luminance = 0.2126 * linear(16) + 0.7152 * linear(8) + 0.0722 * linear(0)
+    val onBlack = (luminance + 0.05) / 0.05
+    val onWhite = 1.05 / (luminance + 0.05)
+    return if (onBlack >= onWhite) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+}

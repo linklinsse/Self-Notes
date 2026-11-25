@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -64,22 +63,6 @@ class WidgetApiTest {
     }
 
     @Test
-    fun `WIDGET-6 toggles an item by index and text`() = runTest {
-        respond(200, """{"id":"n","content":"- [x] Milk"}""")
-
-        val result = api.toggleItem("n", 0, "Milk", true)
-
-        assertEquals("- [x] Milk", (result as ApiResult.Ok).value.getString("content"))
-        val request = server.takeRequest()
-        assertEquals("POST", request.method)
-        assertEquals("/api/v1/notes/n/items/toggle", request.path)
-        val body = JSONObject(request.body.readUtf8())
-        assertEquals(0, body.getInt("index"))
-        assertEquals("Milk", body.getString("text"))
-        assertTrue(body.getBoolean("checked"))
-    }
-
-    @Test
     fun `AUTH-4 a refused access token is refreshed once, under the session's mutex`() = runTest {
         respond(401)
         respond(200, """{"id":"n"}""")
@@ -91,13 +74,13 @@ class WidgetApiTest {
     }
 
     @Test
-    fun `WIDGET-11 a deleted or unshared note is unavailable, and conflicts keep their code`() = runTest {
+    fun `WIDGET-11 a deleted or unshared note is unavailable`() = runTest {
         respond(404)
         assertEquals(ApiResult.NotFound, api.getNote("gone"))
         respond(403)
         assertEquals(ApiResult.NotFound, api.getNote("unshared"))
-        respond(409, """{"error":{"code":"ITEM_NOT_FOUND","message":"x"}}""")
-        assertEquals(ApiResult.Conflict("ITEM_NOT_FOUND"), api.toggleItem("n", 4, "Gone", true))
+        respond(503)
+        assertEquals(ApiResult.Failed(503), api.getNote("n"))
     }
 
     @Test

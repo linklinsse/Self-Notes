@@ -9,11 +9,7 @@ sealed interface WidgetBlock {
     /** Bullet ("•") or numbered ("3.") list item. */
     data class ListItem(val marker: String, val text: String, val depth: Int) : WidgetBlock
 
-    /**
-     * A task item. [index] is its position among the note's task items and [rawText] its text as
-     * written: both identify the item for `POST /notes/{id}/items/toggle`.
-     */
-    data class Task(val index: Int, val rawText: String, val text: String, val checked: Boolean, val depth: Int) : WidgetBlock
+    data class Task(val text: String, val checked: Boolean, val depth: Int) : WidgetBlock
 
     data class Code(val text: String) : WidgetBlock
 
@@ -22,13 +18,9 @@ sealed interface WidgetBlock {
     data object Rule : WidgetBlock
 }
 
-/** A GFM task item, as `parseTaskItems` in frontend/src/markdown/tasklist.ts finds it. */
-data class TaskItem(val line: Int, val checked: Boolean, val text: String)
-
 /**
- * The Markdown subset the Note widget shows (WIDGET-5): block structure only. Task items are found
- * exactly like the TypeScript parsers do (same test fixtures), so that a toggle from the widget
- * targets the same item as the server.
+ * The Markdown subset the Note widget shows (WIDGET-5): block structure and line breaks (NOTE-2).
+ * Task items are found exactly like the TypeScript parsers do (same test fixtures).
  */
 object WidgetMarkdown {
     private val TASK = Regex("""^(\s*)([-*+]|\d+[.)])\s+\[([ xX])\](?:[ \t]+(.*))?$""")
@@ -44,35 +36,12 @@ object WidgetMarkdown {
     private val TABLE_SEPARATOR = Regex("""^\s*\|?(\s*:?-+:?\s*\|)+\s*:?-*:?\s*$""")
     private val TOC = Regex("""^\s*(\[\[_TOC_]]|\[TOC])\s*$""", RegexOption.IGNORE_CASE)
 
-    /** Same as `parseTaskItems`: document order, lines inside fenced code blocks ignored. */
-    fun taskItems(content: String): List<TaskItem> {
-        val items = mutableListOf<TaskItem>()
-        var inFence = false
-        content.split('\n').forEachIndexed { line, raw ->
-            val text = raw.removeSuffix("\r")
-            if (FENCE.containsMatchIn(text)) {
-                inFence = !inFence
-                return@forEachIndexed
-            }
-            if (inFence) return@forEachIndexed
-            TASK.matchEntire(text)?.let { match ->
-                items += TaskItem(line, match.groupValues[3] != " ", match.groupValues[4].trim())
-            }
-        }
-        return items
-    }
-
-    /** Checks or unchecks the task item at [index] (local, optimistic update). Null when it does not exist. */
-    fun setChecked(content: String, index: Int, checked: Boolean): String? {
-        val item = taskItems(content).getOrNull(index) ?: return null
-        val lines = content.split('\n').toMutableList()
-        lines[item.line] = lines[item.line].replaceFirst(Regex("""\[([ xX])]"""), if (checked) "[x]" else "[ ]")
-        return lines.joinToString("\n")
-    }
-
-    /** Same as `stripInline`: links, images, code, emphasis and HTML tags become plain text. */
+    /**
+     * Same as `stripInline`: links, images, code, emphasis and HTML tags become plain text. Line
+     * breaks are kept, and emphasis may span them: `.` does not match a line break, hence [BREAK].
+     */
     fun stripInline(text: String): String =
-        text
+        text.replace('\n', BREAK)
             .replace(Regex("""!\[([^\]]*)]\([^)]*\)"""), "$1")
             .replace(Regex("""\[([^\]]+)]\([^)]*\)"""), "$1")
             .replace(Regex("""`([^`]*)`"""), "$1")
@@ -80,7 +49,11 @@ object WidgetMarkdown {
             .replace(Regex("""\*(\S(?:.*?\S)?)\*"""), "$1")
             .replace(Regex("""(^|\W)_(\S(?:.*?\S)?)_(?=\W|$)"""), "$1$2")
             .replace(Regex("""<[^>]+>"""), "")
+            .replace(BREAK, '\n')
             .trim()
+
+    /** A private-use character, never found in notes. */
+    private const val BREAK = '\uE000'
 
     /**
      * The blocks of [content], at most [maxBlocks] (a widget is not meant to show a whole book;
@@ -89,7 +62,6 @@ object WidgetMarkdown {
     fun parse(content: String, maxBlocks: Int = 200): Parsed {
         val blocks = mutableListOf<WidgetBlock>()
         val paragraph = StringBuilder()
-        var taskIndex = 0
         var fence: StringBuilder? = null
         var fenceIsDiagram = false
         var quote: StringBuilder? = null
@@ -142,16 +114,15 @@ object WidgetMarkdown {
             if (quoted != null) {
                 flushParagraph()
                 val current = quote ?: StringBuilder().also { quote = it }
-                if (current.isNotEmpty()) current.append(' ')
-                current.append(quoted.groupValues[1].trim())
+                if (current.isNotEmpty()) current.append('\n')
+                current.append(sourceLine(quoted.groupValues[1]))
             } else {
                 flushQuote()
                 val task = TASK.matchEntire(line)
                 when {
                     task != null -> {
                         flushParagraph()
-                        val rawText = task.groupValues[4].trim()
-                        blocks += WidgetBlock.Task(taskIndex++, rawText, stripInline(rawText), task.groupValues[3] != " ", depth(task.groupValues[1]))
+                        blocks += WidgetBlock.Task(stripInline(task.groupValues[4]), task.groupValues[3] != " ", depth(task.groupValues[1]))
                     }
                     RULE.matches(line) -> {
                         flushParagraph()
@@ -180,11 +151,11 @@ object WidgetMarkdown {
                     }
                     line.startsWith(" ") && paragraph.isEmpty() && blocks.lastOrNull().isListLike() -> {
                         // Continuation of the previous list item.
-                        blocks[blocks.lastIndex] = blocks.last().append(stripInline(line))
+                        blocks[blocks.lastIndex] = blocks.last().append(stripInline(sourceLine(line)))
                     }
                     else -> {
-                        if (paragraph.isNotEmpty()) paragraph.append(' ')
-                        paragraph.append(line.trim())
+                        if (paragraph.isNotEmpty()) paragraph.append('\n')
+                        paragraph.append(sourceLine(line))
                     }
                 }
             }
@@ -200,6 +171,9 @@ object WidgetMarkdown {
     /** Mermaid diagrams cannot be drawn in a widget. */
     const val DIAGRAM = "[Diagram: open the note to see it]"
 
+    /** One source line, without Markdown's older line break marks (two spaces or a backslash at the end). */
+    private fun sourceLine(source: String): String = source.trim().removeSuffix("\\")
+
     /** Two spaces (or a tab) per level, capped: a widget is narrow. */
     private fun depth(indent: String): Int = (indent.replace("\t", "  ").length / 2).coerceAtMost(3)
 
@@ -207,8 +181,8 @@ object WidgetMarkdown {
 
     private fun WidgetBlock.append(more: String): WidgetBlock =
         when (this) {
-            is WidgetBlock.ListItem -> copy(text = "$text $more")
-            is WidgetBlock.Task -> copy(text = "$text $more")
+            is WidgetBlock.ListItem -> copy(text = "$text\n$more")
+            is WidgetBlock.Task -> copy(text = "$text\n$more")
             else -> this
         }
 }
