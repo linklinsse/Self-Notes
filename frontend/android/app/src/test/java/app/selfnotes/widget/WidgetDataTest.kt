@@ -40,6 +40,9 @@ class WidgetDataTest {
         assertEquals("Lists · Courses", list.title)
         assertEquals("My notes", WidgetConfig.NotesList(Scope.MINE).title)
         assertEquals(WidgetConfig.Note("n-1"), WidgetConfig.fromJson(WidgetConfig.Note("n-1").toJson()))
+        // WIDGET-6: hiding checked items is kept; widgets configured before the option show everything.
+        assertEquals(WidgetConfig.Note("n-1", hideChecked = true), WidgetConfig.fromJson(WidgetConfig.Note("n-1", true).toJson()))
+        assertEquals(WidgetConfig.Note("n-1", hideChecked = false), WidgetConfig.fromJson("""{"kind":"note","noteId":"n-1"}"""))
         assertNull(WidgetConfig.fromJson("{\"kind\":\"note\"}"))
         assertNull(WidgetConfig.fromJson(null))
     }
@@ -73,6 +76,14 @@ class WidgetDataTest {
             note.categories,
         )
         assertEquals(emptyList<WidgetCategory>(), NoteView.parse("""{"id":"n"}""")!!.categories)
+    }
+
+    @Test
+    fun `WIDGET-6 only owners and editors may check items`() {
+        val note = { role: String -> NoteView.parse("""{"id":"n","title":"T","type":"list","content":"- [ ] a","locked":false,"role":"$role"}""")!! }
+        assertTrue(note("owner").canEdit)
+        assertTrue(note("editor").canEdit)
+        assertEquals(false, note("viewer").canEdit)
     }
 
     @Test

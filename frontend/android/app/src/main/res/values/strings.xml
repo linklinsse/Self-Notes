@@ -11,7 +11,7 @@
     <string name="widget_notes_by_type_label">Notes by type</string>
     <string name="widget_notes_by_type_description">Only your lists, or only your text notes</string>
     <string name="widget_note_label">Note</string>
-    <string name="widget_note_description">The content of one note</string>
+    <string name="widget_note_description">One note; check list items right from the home screen</string>
     <string name="widget_new_note">New note</string>
     <string name="widget_refresh">Refresh</string>
     <string name="widget_sign_in">Sign in to Self-Notes</string>
@@ -25,6 +25,14 @@
     <string name="widget_favorite">Favorite</string>
     <string name="widget_checked">Checked</string>
     <string name="widget_unchecked">Not checked</string>
+    <string name="widget_check">Check</string>
+    <string name="widget_uncheck">Uncheck</string>
+    <string name="widget_hide_checked">Hide checked items</string>
+    <string name="widget_show_checked">Show checked items</string>
+    <plurals name="widget_checked_hidden">
+        <item quantity="one">%d checked item hidden</item>
+        <item quantity="other">%d checked items hidden</item>
+    </plurals>
     <string name="widget_unavailable">Note unavailable</string>
     <string name="widget_pick_note">Pick another note</string>
     <string name="widget_more">Open the note to see the rest</string>

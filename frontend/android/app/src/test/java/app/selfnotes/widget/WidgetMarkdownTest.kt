@@ -22,8 +22,13 @@ class WidgetMarkdownTest {
                     item.getBoolean("checked") to WidgetMarkdown.stripInline(item.getString("text"))
                 }
             }
-            val tasks = WidgetMarkdown.parse(case.getString("content")).blocks.filterIsInstance<WidgetBlock.Task>()
+            val content = case.getString("content")
+            val tasks = WidgetMarkdown.parse(content).blocks.filterIsInstance<WidgetBlock.Task>()
             assertEquals(case.getString("name"), expected, tasks.map { it.checked to it.text })
+            // The positions and texts sent to the toggle endpoint are the server's.
+            val items = WidgetMarkdown.taskItems(content)
+            assertEquals(case.getString("name"), items.map { it.text }, tasks.map { it.rawText })
+            assertEquals(case.getString("name"), items.indices.toList(), tasks.map { it.index })
         }
     }
 
@@ -58,13 +63,13 @@ class WidgetMarkdownTest {
     }
 
     @Test
-    fun `WIDGET-6 task blocks carry their state and depth`() {
+    fun `WIDGET-6 task blocks carry their position and first line, for the toggle endpoint`() {
         val blocks = WidgetMarkdown.parse("```\n- [ ] code\n```\n- [ ] **Milk**\n  - [x] Bread").blocks
         assertEquals(
             listOf(
                 WidgetBlock.Code("- [ ] code"),
-                WidgetBlock.Task("Milk", false, 0),
-                WidgetBlock.Task("Bread", true, 1),
+                WidgetBlock.Task(0, "**Milk**", "Milk", false, 0),
+                WidgetBlock.Task(1, "Bread", "Bread", true, 1),
             ),
             blocks,
         )
@@ -108,6 +113,26 @@ class WidgetMarkdownTest {
             ),
             WidgetMarkdown.parse("One  \ntwo **bold\nwords** end\\\r\nlast\n\n> First\n> second").blocks,
         )
+    }
+
+    @Test
+    fun `NOTE-4 a multiline item keeps its next lines, and the server knows it by its first one`() {
+        val content = "- [ ] Lait\n  demi-écrémé\n  2 bouteilles\n- [x] Pain"
+        assertEquals(
+            listOf(
+                WidgetBlock.Task(0, "Lait", "Lait\ndemi-écrémé\n2 bouteilles", false, 0),
+                WidgetBlock.Task(1, "Pain", "Pain", true, 0),
+            ),
+            WidgetMarkdown.parse(content).blocks,
+        )
+        assertEquals("- [x] Lait\n  demi-écrémé\n  2 bouteilles\n- [x] Pain", WidgetMarkdown.setChecked(content, 0, true))
+    }
+
+    @Test
+    fun `setChecked changes only the item at that index`() {
+        assertEquals("- [ ] A\n- [x] B", WidgetMarkdown.setChecked("- [ ] A\n- [ ] B", 1, true))
+        assertEquals("- [ ] A\r\n- [ ] B", WidgetMarkdown.setChecked("- [x] A\r\n- [ ] B", 0, false))
+        assertEquals(null, WidgetMarkdown.setChecked("- [ ] A", 3, true))
     }
 
     @Test

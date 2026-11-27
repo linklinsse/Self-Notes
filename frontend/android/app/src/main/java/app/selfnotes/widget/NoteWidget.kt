@@ -15,9 +15,11 @@ import androidx.glance.GlanceModifier
 import androidx.glance.LocalContext
 import androidx.glance.LocalGlanceId
 import androidx.glance.action.Action
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
@@ -59,16 +61,27 @@ fun NoteContent(prefs: Preferences) {
         ?: actionStartActivity(WidgetIntents.openApp(context))
     // The note's data may outlive a status change (signed out, unavailable): show it only when OK.
     val shown = note.takeIf { status == WidgetStatus.OK }
-    WidgetFrame(colors, accent = shown?.categories?.firstOrNull()?.color) {
+    val parsed = shown?.takeIf { !it.locked }?.let { WidgetMarkdown.parse(it.content) }
+    val hideChecked = config?.hideChecked == true
+    // WIDGET-6: a tap anywhere opens the note; only the buttons and the boxes of the items do more.
+    WidgetFrame(colors, accent = shown?.categories?.firstOrNull()?.color, onClick = open) {
         WidgetHeader(
-            title = when {
-                shown == null -> context.getString(R.string.app_name)
-                else -> shown.title.ifEmpty { context.getString(R.string.widget_untitled) }
-            },
+            title = shown?.title?.ifEmpty { context.getString(R.string.widget_untitled) } ?: context.getString(R.string.app_name),
             colors = colors,
             onTitle = open,
             newNote = null,
+            buttons = {
+                if (parsed != null && parsed.blocks.any { it is WidgetBlock.Task }) {
+                    IconButton(
+                        icon = if (hideChecked) R.drawable.ic_widget_eye else R.drawable.ic_widget_eye_off,
+                        description = context.getString(if (hideChecked) R.string.widget_show_checked else R.string.widget_hide_checked),
+                        tint = if (hideChecked) colors.accent else colors.text2,
+                        onClick = actionRunCallback<ToggleHideCheckedAction>(),
+                    )
+                }
+            },
         )
+        StaleNotice(prefs, colors)
         if (status == WidgetStatus.UNAVAILABLE) {
             UnavailableMessage(colors)
         } else if (!showCommonStates(prefs, colors)) {
@@ -79,46 +92,63 @@ fun NoteContent(prefs: Preferences) {
                     CategoryChips(shown.categories)
                     WidgetMessage(context.getString(R.string.widget_locked), colors, GlanceModifier.defaultWeight(), onClick = open)
                 }
-                else -> NoteBlocks(shown, colors, open)
+                else -> NoteBlocks(shown, parsed!!, hideChecked, colors, open)
             }
         }
-        StaleFooter(prefs, colors)
     }
 }
 
-/** WIDGET-6: every block opens the note. Items are checked in the app, not here. */
 @Composable
-private fun ColumnScope.NoteBlocks(note: NoteView, colors: WidgetColors, open: Action) {
+private fun ColumnScope.NoteBlocks(
+    note: NoteView,
+    parsed: WidgetMarkdown.Parsed,
+    hideChecked: Boolean,
+    colors: WidgetColors,
+    open: Action,
+) {
     val context = LocalContext.current
-    val parsed = WidgetMarkdown.parse(note.content)
+    val blocks = if (hideChecked) parsed.blocks.filterNot { it is WidgetBlock.Task && it.checked } else parsed.blocks
+    val hidden = parsed.blocks.size - blocks.size
     if (parsed.blocks.isEmpty()) {
         CategoryChips(note.categories)
         WidgetMessage(context.getString(R.string.widget_empty_note), colors, GlanceModifier.defaultWeight(), onClick = open)
         return
     }
-    LazyColumn(modifier = GlanceModifier.defaultWeight()) {
+    // As tall as its content: a list taking the whole height would swallow the taps under its
+    // last line. The space left below opens the note.
+    LazyColumn {
         // The chips scroll with the content: on a small widget the height goes to the note.
         if (note.categories.isNotEmpty()) {
             item { Box(modifier = GlanceModifier.fillMaxWidth().clickable(open)) { CategoryChips(note.categories) } }
         }
-        items(parsed.blocks) { block ->
-            Box(modifier = GlanceModifier.fillMaxWidth().clickable(open)) { BlockView(block, colors) }
+        items(blocks) { block ->
+            Box(modifier = GlanceModifier.fillMaxWidth().clickable(open)) { BlockView(block, note, colors) }
+        }
+        if (hidden > 0) {
+            item {
+                Text(
+                    text = context.resources.getQuantityString(R.plurals.widget_checked_hidden, hidden, hidden),
+                    style = TextStyle(color = colors.text2.provider(), fontSize = 12.sp),
+                    modifier = GlanceModifier.fillMaxWidth().padding(vertical = 4.dp).clickable(actionRunCallback<ToggleHideCheckedAction>()),
+                )
+            }
         }
         if (parsed.truncated) {
             item {
                 Text(
                     text = context.getString(R.string.widget_more),
                     style = TextStyle(color = colors.accent.provider(), fontSize = 13.sp),
-                    modifier = GlanceModifier.padding(vertical = 6.dp).clickable(open),
+                    modifier = GlanceModifier.fillMaxWidth().padding(vertical = 6.dp).clickable(open),
                 )
             }
         }
     }
+    Box(modifier = GlanceModifier.fillMaxWidth().defaultWeight().clickable(open)) {}
 }
 
 /** WIDGET-5: block structure kept, inline formatting as plain text. */
 @Composable
-private fun BlockView(block: WidgetBlock, colors: WidgetColors) {
+private fun BlockView(block: WidgetBlock, note: NoteView, colors: WidgetColors) {
     val text1 = colors.text1.provider()
     val text2 = colors.text2.provider()
     when (block) {
@@ -133,19 +163,19 @@ private fun BlockView(block: WidgetBlock, colors: WidgetColors) {
                     else -> 15.sp
                 },
             ),
-            modifier = GlanceModifier.padding(top = 6.dp, bottom = 2.dp),
+            modifier = GlanceModifier.fillMaxWidth().padding(top = 6.dp, bottom = 2.dp),
         )
         is WidgetBlock.Paragraph -> Text(
             text = block.text,
             style = TextStyle(color = text1, fontSize = 14.sp),
-            modifier = GlanceModifier.padding(vertical = 2.dp),
+            modifier = GlanceModifier.fillMaxWidth().padding(vertical = 2.dp),
         )
         is WidgetBlock.ListItem -> Row(modifier = GlanceModifier.fillMaxWidth().padding(start = (block.depth * 14).dp, top = 1.dp, bottom = 1.dp)) {
             Text(text = block.marker, style = TextStyle(color = colors.accent.provider(), fontSize = 14.sp))
             Spacer(modifier = GlanceModifier.width(6.dp))
             Text(text = block.text, style = TextStyle(color = text1, fontSize = 14.sp))
         }
-        is WidgetBlock.Task -> TaskView(block, colors)
+        is WidgetBlock.Task -> TaskView(block, note, colors)
         is WidgetBlock.Code -> Box(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp)) {
             Text(
                 text = block.text,
@@ -165,34 +195,52 @@ private fun BlockView(block: WidgetBlock, colors: WidgetColors) {
 }
 
 /**
- * WIDGET-6: a small box shows the state, and checked items are struck through. An image rather than
- * a CheckBox: it cannot be toggled, and Android 12+ gives every CheckBox a height of 48 dp.
+ * WIDGET-6: one compact line. Its box checks or unchecks the item (owners and editors); the rest of
+ * the line opens the note. An image, not a CheckBox: Android 12+ makes every CheckBox 48 dp tall.
  */
 @Composable
-private fun TaskView(task: WidgetBlock.Task, colors: WidgetColors) {
+private fun TaskView(task: WidgetBlock.Task, note: NoteView, colors: WidgetColors) {
     val context = LocalContext.current
+    val box = GlanceModifier.width(26.dp).height(22.dp)
     Row(
         modifier = GlanceModifier.fillMaxWidth().padding(start = (task.depth * 12).dp, top = 1.dp, bottom = 1.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Top,
     ) {
-        WidgetIcon(
-            icon = if (task.checked) R.drawable.ic_widget_checked else R.drawable.ic_widget_unchecked,
-            tint = if (task.checked) colors.checkbox else colors.text2,
-            size = 13,
-            description = context.getString(if (task.checked) R.string.widget_checked else R.string.widget_unchecked),
-        )
-        Spacer(modifier = GlanceModifier.width(6.dp))
+        Box(
+            modifier = if (note.canEdit) box.clickable(toggle(task)) else box,
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            WidgetIcon(
+                icon = if (task.checked) R.drawable.ic_widget_checked else R.drawable.ic_widget_unchecked,
+                tint = if (task.checked) colors.checkbox else colors.text2,
+                size = 15,
+                description = when {
+                    !note.canEdit -> context.getString(if (task.checked) R.string.widget_checked else R.string.widget_unchecked)
+                    else -> context.getString(if (task.checked) R.string.widget_uncheck else R.string.widget_check)
+                },
+            )
+        }
         Text(
             text = task.text,
-            maxLines = 3,
+            maxLines = 6,
             style = TextStyle(
                 color = (if (task.checked) colors.text2 else colors.text1).provider(),
                 fontSize = 13.sp,
                 textDecoration = if (task.checked) TextDecoration.LineThrough else TextDecoration.None,
             ),
+            modifier = GlanceModifier.defaultWeight().padding(top = 2.dp),
         )
     }
 }
+
+private fun toggle(task: WidgetBlock.Task): Action =
+    actionRunCallback<ToggleItemAction>(
+        actionParametersOf(
+            ToggleItemAction.INDEX to task.index,
+            ToggleItemAction.TEXT to task.rawText,
+            ToggleItemAction.CHECKED to !task.checked,
+        ),
+    )
 
 /** WIDGET-11: the note was deleted or is no longer shared. */
 @Composable

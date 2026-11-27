@@ -39,8 +39,8 @@ sealed interface WidgetConfig {
             get() = listOfNotNull(type?.label ?: scope.label, categoryName).joinToString(" · ")
     }
 
-    /** Note (WIDGET-3). */
-    data class Note(val noteId: String) : WidgetConfig
+    /** Note (WIDGET-3). [hideChecked]: only the items left to do (WIDGET-6). */
+    data class Note(val noteId: String, val hideChecked: Boolean = false) : WidgetConfig
 
     fun toJson(): String =
         when (this) {
@@ -50,7 +50,7 @@ sealed interface WidgetConfig {
                 .putOpt("type", type?.api)
                 .putOpt("categoryId", categoryId)
                 .putOpt("categoryName", categoryName)
-            is Note -> JSONObject().put("kind", "note").put("noteId", noteId)
+            is Note -> JSONObject().put("kind", "note").put("noteId", noteId).put("hideChecked", hideChecked)
         }.toString()
 
     companion object {
@@ -65,7 +65,7 @@ sealed interface WidgetConfig {
                         categoryId = o.optString("categoryId").ifEmpty { null },
                         categoryName = o.optString("categoryName").ifEmpty { null },
                     )
-                    "note" -> o.optString("noteId").ifEmpty { null }?.let(::Note)
+                    "note" -> o.optString("noteId").ifEmpty { null }?.let { Note(it, o.optBoolean("hideChecked")) }
                     else -> null
                 }
             } catch (_: JSONException) {

@@ -61,6 +61,32 @@ test('NOTE-4 NOTE-5: a checklist keeps its items and shows its progress', async 
   await expect(card(page, 'Courses')).toContainText('1/2');
 });
 
+test('NOTE-4: a checklist item may span several lines (Shift+Enter), Enter starts the next item', async ({ page }) => {
+  await page.getByRole('button', { name: 'New note' }).click();
+  await page.getByRole('button', { name: 'Checklist' }).click();
+  await page.waitForURL(/\/notes\/[0-9a-f-]{36}$/);
+  await page.getByLabel('Title').fill('Courses');
+  await page.getByRole('button', { name: 'Add item' }).click();
+  await page.keyboard.type('Lait');
+  await page.keyboard.press('Shift+Enter');
+  await page.keyboard.type('demi-écrémé');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Pain');
+  const saved = savedWith(page, 'Pain');
+  await page.getByLabel('Title').click();
+  const body = JSON.parse((await saved).request().postData() ?? '{}') as { content?: string };
+  expect(body.content).toBe('- [ ] Lait\n  demi-écrémé\n- [ ] Pain');
+
+  // Shown on two lines, and checking it still works (the server finds it by its first line).
+  const item = page.locator('.check-item').first();
+  await expect(item.locator('.item-text br')).toHaveCount(1);
+  const toggled = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().endsWith('/items/toggle') && r.ok());
+  await page.getByRole('checkbox', { name: 'Check Lait' }).check();
+  await toggled;
+  await page.goto('/');
+  await expect(card(page, 'Courses')).toContainText('1/2');
+});
+
 test('NOTE-10: search ignores case and accents', async ({ page }) => {
   await createNote(user, { title: 'Été à Paris', content: 'Croissants' });
   await createNote(user, { title: 'Hiver', content: 'Ski' });
@@ -74,4 +100,25 @@ test('NOTE-10: search ignores case and accents', async ({ page }) => {
   await search.fill('CROISSANT');
   await expect(card(page, 'Été à Paris')).toBeVisible();
   await expect(card(page, 'Hiver')).toHaveCount(0);
+});
+
+test('NOTE-21: notes per row are chosen in the sort menu and kept on this device', async ({ page }) => {
+  for (const title of ['A', 'B', 'C', 'D', 'E']) await createNote(user, { title, content: 'x' });
+  await page.reload();
+  const perRow = async () => {
+    const tops = await page.locator('.note-card').evaluateAll((cards) => cards.map((c) => Math.round(c.getBoundingClientRect().top)));
+    return tops.filter((top) => top === tops[0]).length;
+  };
+  await expect(page.locator('.note-card')).toHaveCount(5);
+
+  await page.getByRole('button', { name: /^Sort:/ }).click();
+  await page.getByRole('button', { name: '2 per row' }).click();
+  await expect.poll(perRow).toBe(2);
+  await page.reload();
+  await expect(page.locator('.note-card')).toHaveCount(5);
+  await expect.poll(perRow).toBe(2);
+
+  await page.getByRole('button', { name: /^Sort:/ }).click();
+  await page.getByRole('button', { name: 'Automatic' }).click();
+  await expect.poll(perRow).toBe(5);
 });

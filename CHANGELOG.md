@@ -6,6 +6,18 @@ The release pipeline copies the section matching [`VERSION`](VERSION) into the G
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-27
+
+### Added
+- Checklist items can span several lines (NOTE-4, NOTE-5). On a phone, Enter starts a new line in the item and Enter on an empty last line starts the next item; with a keyboard, Shift+Enter starts a new line. In the note's Markdown, the next lines are indented under the item.
+- Notes per row in the grid: automatic or 1 to 6, in the sort menu, saved on each device (NOTE-21).
+- Note widget: a header button hides the checked items, and a line tells how many are hidden (WIDGET-6).
+
+### Changed
+- Note widget: tapping an item's box checks or unchecks it again (owners and editors); tapping anywhere else, including the empty space under the content, opens the note (WIDGET-6).
+- The cards of the notes grid are smaller: less padding, a smaller title, at most 4 lines of preview; more of them fit on a row (NOTE-21).
+- Widgets show "Offline · updated …" under their header instead of at the bottom.
+
 ## [0.3.0] - 2026-11-25
 
 ### Added

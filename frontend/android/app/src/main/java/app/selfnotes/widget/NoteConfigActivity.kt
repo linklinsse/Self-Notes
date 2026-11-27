@@ -61,7 +61,9 @@ class NoteConfigActivity : ComponentActivity() {
                         if (saving) return@pick
                         saving = true
                         lifecycleScope.launch {
-                            WidgetSetup.save(this@NoteConfigActivity, appWidgetId, WidgetConfig.Note(noteId))
+                            val current = WidgetSetup.currentConfig(this@NoteConfigActivity, appWidgetId) as? WidgetConfig.Note
+                            val config = WidgetConfig.Note(noteId, hideChecked = current?.hideChecked ?: false)
+                            WidgetSetup.save(this@NoteConfigActivity, appWidgetId, config)
                             setResult(RESULT_OK, WidgetSetup.result(appWidgetId))
                             finish()
                         }
