@@ -6,6 +6,8 @@ The release pipeline copies the section matching [`VERSION`](VERSION) into the G
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-27
+
 ### Added
 - Checklist items can span several lines (NOTE-4, NOTE-5). On a phone, Enter starts a new line in the item and Enter on an empty last line starts the next item; with a keyboard, Shift+Enter starts a new line. In the note's Markdown, the next lines are indented under the item.
 - Notes per row in the grid: automatic or 1 to 6, in the sort menu, saved on each device (NOTE-21).
