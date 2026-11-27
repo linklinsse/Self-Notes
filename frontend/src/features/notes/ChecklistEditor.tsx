@@ -1,9 +1,10 @@
-import { type CSSProperties, type KeyboardEvent, type PointerEvent, useRef, useState } from 'react';
+import { type CSSProperties, type KeyboardEvent, type PointerEvent, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon';
 import { InlineMarkdown } from '../../markdown/Markdown';
 import {
   type ItemLine,
   type Line,
+  firstLine,
   insertItem,
   items,
   moveItem,
@@ -12,6 +13,7 @@ import {
   serializeLines,
   updateItem,
 } from '../../markdown/listModel';
+import { platform } from '../../platform';
 
 /** Keep the previous keys when the structure is unchanged, so rows and focus survive server updates. */
 function reconcile(prev: Line[], next: Line[]): Line[] {
@@ -22,6 +24,26 @@ function reconcile(prev: Line[], next: Line[]): Line[] {
 }
 
 const depth = (line: ItemLine) => Math.min(4, Math.floor(line.indent.replace(/\t/g, '  ').length / 2));
+
+/**
+ * NOTE-4: on phones (the Android app, touch screens), Enter starts a new line in the item, and
+ * Enter on an empty last line starts the next item. With a keyboard, Enter starts the next item and
+ * Shift+Enter a new line.
+ */
+const enterBreaksLine = () =>
+  platform.kind === 'android' || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+
+/** A text area as tall as its text. */
+function ItemTextarea(props: React.ComponentProps<'textarea'>) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [props.value]);
+  return <textarea ref={ref} rows={1} {...props} />;
+}
 
 /**
  * NOTE-4 / NOTE-5 / NOTE-6: checklist UI over GFM task items. Items stay where they are when
@@ -58,35 +80,59 @@ export function ChecklistEditor({
     onChange(text);
   }
 
-  function addAfter(key: string | null) {
-    const result = insertItem(lines, key ?? all.at(-1)?.key ?? null);
+  function addAfter(key: string | null, from: Line[] = lines) {
+    const result = insertItem(from, key ?? items(from).at(-1)?.key ?? null);
     commit(result.lines);
     setFocusKey(result.key);
   }
 
+  /** Ends a multiline item typed on a phone: its trailing empty lines go, the next item starts. */
+  function finishItem(line: ItemLine) {
+    addAfter(line.key, updateItem(lines, line.key, { text: line.text.replace(/\n+$/, '') }));
+  }
+
   function toggle(line: ItemLine) {
+    // The server knows an item by its position and first line (multiline items, NOTE-4).
     onToggle(
       all.findIndex((l) => l.key === line.key),
-      line.text,
+      firstLine(line.text),
       !line.checked,
     );
   }
 
-  function onKeyDown(e: KeyboardEvent<HTMLInputElement>, line: ItemLine) {
+  function onTextChange(line: ItemLine, value: string) {
+    // Phone keyboards may skip the keydown: Enter on the empty last line shows up here.
+    if (enterBreaksLine() && value === `${line.text}\n` && line.text.endsWith('\n')) {
+      finishItem(line);
+      return;
+    }
+    commit(updateItem(lines, line.key, { text: value }));
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>, line: ItemLine) {
     const visible = all;
     const pos = visible.findIndex((l) => l.key === line.key);
+    const { selectionStart, selectionEnd } = e.currentTarget;
+    const onFirstLine = !line.text.slice(0, selectionStart).includes('\n');
+    const onLastLine = !line.text.slice(selectionEnd).includes('\n');
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      addAfter(line.key);
+      if (e.shiftKey) return; // a new line in the item
+      if (!enterBreaksLine()) {
+        e.preventDefault();
+        addAfter(line.key);
+      } else if (selectionStart === line.text.length && (line.text === '' || line.text.endsWith('\n'))) {
+        e.preventDefault();
+        finishItem(line);
+      }
     } else if (e.key === 'Backspace' && line.text === '') {
       e.preventDefault();
       const neighbour = visible[pos - 1] ?? visible[pos + 1];
       commit(removeItem(lines, line.key));
       setFocusKey(neighbour?.key ?? null);
-    } else if (e.key === 'ArrowUp' && pos > 0) {
+    } else if (e.key === 'ArrowUp' && pos > 0 && onFirstLine) {
       e.preventDefault();
       setFocusKey(visible[pos - 1]!.key);
-    } else if (e.key === 'ArrowDown' && pos < visible.length - 1) {
+    } else if (e.key === 'ArrowDown' && pos < visible.length - 1 && onLastLine) {
       e.preventDefault();
       setFocusKey(visible[pos + 1]!.key);
     }
@@ -138,15 +184,15 @@ export function ChecklistEditor({
           checked={line.checked}
           disabled={readOnly}
           onChange={() => toggle(line)}
-          aria-label={`${line.checked ? 'Uncheck' : 'Check'} ${line.text || 'item'}`}
+          aria-label={`${line.checked ? 'Uncheck' : 'Check'} ${firstLine(line.text) || 'item'}`}
         />
         {editing ? (
-          <input
+          <ItemTextarea
             className="item-input"
             value={line.text}
             autoFocus
             aria-label="Item text"
-            onChange={(e) => commit(updateItem(lines, line.key, { text: e.target.value }))}
+            onChange={(e) => onTextChange(line, e.target.value)}
             onKeyDown={(e) => onKeyDown(e, line)}
             onBlur={() => setFocusKey((k) => (k === line.key ? null : k))}
           />

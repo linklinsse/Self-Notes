@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { insertItem, items, moveItem, parseLines, removeItem, serializeLines, updateItem } from './listModel';
+import { firstLine, insertItem, items, moveItem, parseLines, removeItem, serializeLines, updateItem } from './listModel';
 import { parseTaskItems, taskProgress, textToList, toggleTaskItem } from './tasklist';
 import fixtures from './task-items.fixtures.json';
 
@@ -59,6 +59,26 @@ describe('checklist line model', () => {
     const lines = parseLines(content);
     const [milk, , sub] = items(lines);
     expect(serializeLines(moveItem(lines, sub!.key, milk!.key))).toBe('  - [ ] Sub\nA note line\n- [ ] Milk\n- [x] Bread');
+  });
+
+  it('NOTE-4: an item may span several lines, written indented under it', () => {
+    const multi = '- [ ] Milk\n  semi-skimmed\n  2 bottles\n- [x] Bread\nA note line\n  - [ ] Sub\n    detail';
+    const lines = parseLines(multi);
+    expect(items(lines).map((l) => l.text)).toEqual(['Milk\nsemi-skimmed\n2 bottles', 'Bread', 'Sub\ndetail']);
+    expect(serializeLines(lines)).toBe(multi);
+    // The server still finds the same items, by their first line.
+    expect(parseTaskItems(multi).map((i) => i.text)).toEqual(['Milk', 'Bread', 'Sub']);
+    expect(firstLine(items(lines)[0]!.text)).toBe('Milk');
+  });
+
+  it('NOTE-4: blank lines typed in an item are dropped; unindented lines are not part of it', () => {
+    let lines = parseLines('- [ ] Milk\nnot indented\n- [ ] Eggs');
+    expect(items(lines).map((l) => l.text)).toEqual(['Milk', 'Eggs']);
+    const [milk] = items(lines);
+    lines = updateItem(lines, milk!.key, { text: 'Milk\n\n  whole \n' });
+    expect(serializeLines(lines)).toBe('- [ ] Milk\n  whole\nnot indented\n- [ ] Eggs');
+    expect(serializeLines(parseLines('  - [ ] Deep\n    more'))).toBe('  - [ ] Deep\n    more');
+    expect(items(parseLines('  - [ ] Deep\n   one space short')).map((l) => l.text)).toEqual(['Deep']);
   });
 
   it('NOTE-6: checking an item keeps its place', () => {

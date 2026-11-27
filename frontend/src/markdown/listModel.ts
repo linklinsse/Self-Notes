@@ -1,6 +1,13 @@
 /**
  * Line model used by the checklist editor (NOTE-4, NOTE-5).
  * Items are edited; other lines ("raw") are kept in place, untouched.
+ *
+ * An item may span several lines (NOTE-4): its next lines are written indented under it, which
+ * Markdown reads as part of the same list item:
+ *   - [ ] Milk
+ *     semi-skimmed, 2 bottles
+ * In the model, `text` holds them all, joined by "\n". The first line alone identifies the item
+ * for the server's toggle (`parseTaskItems`).
  */
 import { FENCE_RE, TASK_RE } from './tasklist';
 
@@ -13,25 +20,50 @@ export const newKey = () => `l${++seq}`;
 
 export const isItem = (line: Line): line is ItemLine => line.kind === 'item';
 
+/** Width of the leading whitespace, a tab counting as two spaces. */
+const indentWidth = (line: string) => (/^\s*/.exec(line)?.[0] ?? '').replace(/\t/g, '  ').length;
+
 export function parseLines(content: string): Line[] {
   if (content === '') return [];
   let inFence = false;
-  return content.split('\n').map((raw): Line => {
+  const lines: Line[] = [];
+  // The item that the next indented line continues, if any.
+  let open: ItemLine | null = null;
+  for (const raw of content.split('\n')) {
     const text = raw.replace(/\r$/, '');
     if (FENCE_RE.test(text)) {
       inFence = !inFence;
-      return { kind: 'raw', key: newKey(), text: raw };
+      open = null;
+      lines.push({ kind: 'raw', key: newKey(), text: raw });
+      continue;
     }
     const match = inFence ? null : TASK_RE.exec(text);
-    if (!match) return { kind: 'raw', key: newKey(), text: raw };
-    return { kind: 'item', key: newKey(), checked: match[3] !== ' ', text: (match[4] ?? '').trim(), indent: match[1] ?? '' };
-  });
+    if (match) {
+      open = { kind: 'item', key: newKey(), checked: match[3] !== ' ', text: (match[4] ?? '').trim(), indent: match[1] ?? '' };
+      lines.push(open);
+    } else if (open && text.trim() !== '' && indentWidth(text) >= indentWidth(open.indent) + 2) {
+      open.text += `\n${text.trim()}`;
+    } else {
+      open = null;
+      lines.push({ kind: 'raw', key: newKey(), text: raw });
+    }
+  }
+  return lines;
+}
+
+/** The first line of an item: what the server knows it by (`parseTaskItems`). */
+export const firstLine = (text: string) => text.split('\n')[0]!.trim();
+
+function serializeItem(item: ItemLine): string {
+  const [first = '', ...more] = item.text.split('\n');
+  const head = `${item.indent}- [${item.checked ? 'x' : ' '}] ${first.trim()}`.trimEnd();
+  // Blank lines would end the item: they are dropped.
+  const rest = more.map((l) => l.trim()).filter((l) => l !== '').map((l) => `${item.indent}  ${l}`);
+  return [head, ...rest].join('\n');
 }
 
 export function serializeLines(lines: Line[]): string {
-  return lines
-    .map((l) => (l.kind === 'item' ? `${l.indent}- [${l.checked ? 'x' : ' '}] ${l.text}`.trimEnd() : l.text))
-    .join('\n');
+  return lines.map((l) => (l.kind === 'item' ? serializeItem(l) : l.text)).join('\n');
 }
 
 export function items(lines: Line[]): ItemLine[] {

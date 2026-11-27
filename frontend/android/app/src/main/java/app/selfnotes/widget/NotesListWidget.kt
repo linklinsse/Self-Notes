@@ -53,6 +53,7 @@ fun NotesListContent(prefs: Preferences) {
             // WIDGET-7: a new note of the widget's type (text for the plain Notes widget).
             newNote = actionStartActivity(WidgetIntents.newNote(context, config?.type ?: NoteKind.TEXT)),
         )
+        StaleNotice(prefs, colors)
         if (!showCommonStates(prefs, colors)) {
             val rows = NoteRow.parseAll(prefs[WidgetKeys.DATA])
             if (rows.isEmpty()) {
@@ -63,7 +64,6 @@ fun NotesListContent(prefs: Preferences) {
                 }
             }
         }
-        StaleFooter(prefs, colors)
     }
 }
 

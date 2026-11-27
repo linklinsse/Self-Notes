@@ -13,6 +13,7 @@ import { useUser } from '../../auth/AuthProvider';
 import { useUpdatePreferences } from '../settings/usePreferences';
 import { NoteCard } from './NoteCard';
 import { NOTE_SORTS, type NoteGroup, apiSort, groupNotes, noteSortOf } from './noteGroups';
+import { GRID_COLUMNS, useGridColumns } from './gridColumns';
 
 type Scope = 'mine' | 'shared';
 
@@ -43,6 +44,7 @@ export function NotesPage() {
   // NOTE-9: the order is a preference of the account, so it is the same on every device.
   const user = useUser();
   const updatePreferences = useUpdatePreferences();
+  const [columns, setColumns] = useGridColumns();
   const sort = noteSortOf(user.preferences.noteSort);
 
   const list = useNoteList({
@@ -148,6 +150,7 @@ export function NotesPage() {
         >
           {(close) => (
             <div className="menu" role="menu">
+              <p className="menu-title">Sort by</p>
               {NOTE_SORTS.map((s) => (
                 <MenuItem
                   key={s.id}
@@ -160,6 +163,22 @@ export function NotesPage() {
                   {s.label}
                 </MenuItem>
               ))}
+              {/* NOTE-21: saved on this device. */}
+              <p className="menu-title">Notes per row</p>
+              <div className="per-row" role="group" aria-label="Notes per row">
+                {GRID_COLUMNS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={columns === n ? 'is-active' : ''}
+                    aria-pressed={columns === n}
+                    aria-label={n === 0 ? 'Automatic' : `${n} per row`}
+                    onClick={() => setColumns(n)}
+                  >
+                    {n === 0 ? 'Auto' : n}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </Popover>
@@ -212,7 +231,7 @@ export function NotesPage() {
       ) : (
         <>
           {groups.map((group) => (
-            <NoteSection key={group.key} group={group} showOwner={scope === 'shared'} />
+            <NoteSection key={group.key} group={group} showOwner={scope === 'shared'} columns={columns} />
           ))}
           {list.hasNextPage && (
             <div className="centered">
@@ -259,11 +278,23 @@ export function NotesPage() {
   );
 }
 
-function NoteSection({ group: { title, notes }, showOwner }: { group: NoteGroup; showOwner: boolean }) {
+function NoteSection({
+  group: { title, notes },
+  showOwner,
+  columns,
+}: {
+  group: NoteGroup;
+  showOwner: boolean;
+  /** NOTE-21: notes per row, 0 for as many as fit. */
+  columns: number;
+}) {
   return (
     <section className="note-section">
       {title && <h2 className="section-title">{title}</h2>}
-      <div className="note-grid">
+      <div
+        className={`note-grid ${columns ? 'has-columns' : ''}`}
+        style={columns ? ({ '--grid-columns': columns } as CSSProperties) : undefined}
+      >
         {notes.map((n) => (
           <NoteCard key={n.id} note={n} showOwner={showOwner} />
         ))}

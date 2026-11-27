@@ -78,11 +78,17 @@ object WidgetIntents {
 
 /**
  * The widget's rounded background. With [accent] (the color of a note's first category), it is
- * tinted and outlined with it, with a thick left bar, like the cards of the app's grid.
+ * tinted and outlined with it, with a thick left bar, like the cards of the app's grid. With
+ * [onClick], a tap anywhere that no button or row takes runs it.
  */
 @Composable
-fun WidgetFrame(colors: WidgetColors, accent: Int? = null, content: @Composable ColumnScope.() -> Unit) {
-    val root = GlanceModifier.fillMaxSize().appWidgetBackground()
+fun WidgetFrame(
+    colors: WidgetColors,
+    accent: Int? = null,
+    onClick: Action? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val root = GlanceModifier.fillMaxSize().appWidgetBackground().let { if (onClick != null) it.clickable(onClick) else it }
     if (accent == null) {
         Column(modifier = root.rounded(colors.surface, 20).padding(horizontal = 8.dp, vertical = 4.dp), content = content)
         return
@@ -126,9 +132,15 @@ fun CategoryChips(categories: List<WidgetCategory>) {
 
 private const val MAX_CHIPS = 3
 
-/** One line: title, then the + and refresh buttons (WIDGET-7). */
+/** One line: title, then [buttons], the + and refresh buttons (WIDGET-7). */
 @Composable
-fun WidgetHeader(title: String, colors: WidgetColors, onTitle: Action, newNote: Action?) {
+fun WidgetHeader(
+    title: String,
+    colors: WidgetColors,
+    onTitle: Action,
+    newNote: Action?,
+    buttons: @Composable () -> Unit = {},
+) {
     Row(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = title,
@@ -136,6 +148,7 @@ fun WidgetHeader(title: String, colors: WidgetColors, onTitle: Action, newNote: 
             style = TextStyle(color = colors.accent.provider(), fontSize = 13.sp, fontWeight = FontWeight.Bold),
             modifier = GlanceModifier.defaultWeight().clickable(onTitle),
         )
+        buttons()
         if (newNote != null) {
             IconButton(R.drawable.ic_widget_add, LocalContext.current.getString(R.string.widget_new_note), colors.accent, newNote)
         }
@@ -144,7 +157,7 @@ fun WidgetHeader(title: String, colors: WidgetColors, onTitle: Action, newNote: 
 }
 
 @Composable
-private fun IconButton(icon: Int, description: String, tint: Int, onClick: Action) {
+fun IconButton(icon: Int, description: String, tint: Int, onClick: Action) {
     Box(modifier = GlanceModifier.width(32.dp).height(24.dp).cornerRadius(12.dp).clickable(onClick), contentAlignment = Alignment.Center) {
         Image(
             provider = ImageProvider(icon),
@@ -211,13 +224,16 @@ fun ColumnScope.showCommonStates(prefs: Preferences, colors: WidgetColors): Bool
     return true
 }
 
-/** WIDGET-8: offline, the widget keeps its data and says when it was received. */
+/**
+ * WIDGET-8: offline, the widget keeps its data and says when it was received. Under the header: a
+ * long list never pushes it out of the widget.
+ */
 @Composable
-fun StaleFooter(prefs: Preferences, colors: WidgetColors) {
+fun StaleNotice(prefs: Preferences, colors: WidgetColors) {
     if (prefs[WidgetKeys.STALE] != true) return
     val updatedAt = prefs[WidgetKeys.UPDATED_AT] ?: return
     val context = LocalContext.current
-    Row(modifier = GlanceModifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Spacer(modifier = GlanceModifier.width(2.dp))
         Text(
             text = context.getString(R.string.widget_offline_since, formatTime(context, updatedAt)),

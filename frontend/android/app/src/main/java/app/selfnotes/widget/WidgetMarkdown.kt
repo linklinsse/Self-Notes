@@ -9,7 +9,12 @@ sealed interface WidgetBlock {
     /** Bullet ("•") or numbered ("3.") list item. */
     data class ListItem(val marker: String, val text: String, val depth: Int) : WidgetBlock
 
-    data class Task(val text: String, val checked: Boolean, val depth: Int) : WidgetBlock
+    /**
+     * A task item. [index] is its position among the note's task items and [rawText] its first
+     * line as written: both identify the item for `POST /notes/{id}/items/toggle`. [text] also
+     * holds the next lines of a multiline item (NOTE-4).
+     */
+    data class Task(val index: Int, val rawText: String, val text: String, val checked: Boolean, val depth: Int) : WidgetBlock
 
     data class Code(val text: String) : WidgetBlock
 
@@ -17,6 +22,9 @@ sealed interface WidgetBlock {
 
     data object Rule : WidgetBlock
 }
+
+/** A GFM task item, as `parseTaskItems` in frontend/src/markdown/tasklist.ts finds it. */
+data class TaskItem(val line: Int, val checked: Boolean, val text: String)
 
 /**
  * The Markdown subset the Note widget shows (WIDGET-5): block structure and line breaks (NOTE-2).
@@ -35,6 +43,32 @@ object WidgetMarkdown {
     private val TABLE_ROW = Regex("""^\s*\|.*\|\s*$""")
     private val TABLE_SEPARATOR = Regex("""^\s*\|?(\s*:?-+:?\s*\|)+\s*:?-*:?\s*$""")
     private val TOC = Regex("""^\s*(\[\[_TOC_]]|\[TOC])\s*$""", RegexOption.IGNORE_CASE)
+
+    /** Same as `parseTaskItems`: document order, lines inside fenced code blocks ignored. */
+    fun taskItems(content: String): List<TaskItem> {
+        val items = mutableListOf<TaskItem>()
+        var inFence = false
+        content.split('\n').forEachIndexed { line, raw ->
+            val text = raw.removeSuffix("\r")
+            if (FENCE.containsMatchIn(text)) {
+                inFence = !inFence
+                return@forEachIndexed
+            }
+            if (inFence) return@forEachIndexed
+            TASK.matchEntire(text)?.let { match ->
+                items += TaskItem(line, match.groupValues[3] != " ", match.groupValues[4].trim())
+            }
+        }
+        return items
+    }
+
+    /** Checks or unchecks the task item at [index] (local, optimistic update). Null when it does not exist. */
+    fun setChecked(content: String, index: Int, checked: Boolean): String? {
+        val item = taskItems(content).getOrNull(index) ?: return null
+        val lines = content.split('\n').toMutableList()
+        lines[item.line] = lines[item.line].replaceFirst(Regex("""\[([ xX])]"""), if (checked) "[x]" else "[ ]")
+        return lines.joinToString("\n")
+    }
 
     /**
      * Same as `stripInline`: links, images, code, emphasis and HTML tags become plain text. Line
@@ -62,6 +96,7 @@ object WidgetMarkdown {
     fun parse(content: String, maxBlocks: Int = 200): Parsed {
         val blocks = mutableListOf<WidgetBlock>()
         val paragraph = StringBuilder()
+        var taskIndex = 0
         var fence: StringBuilder? = null
         var fenceIsDiagram = false
         var quote: StringBuilder? = null
@@ -122,7 +157,8 @@ object WidgetMarkdown {
                 when {
                     task != null -> {
                         flushParagraph()
-                        blocks += WidgetBlock.Task(stripInline(task.groupValues[4]), task.groupValues[3] != " ", depth(task.groupValues[1]))
+                        val rawText = task.groupValues[4].trim()
+                        blocks += WidgetBlock.Task(taskIndex++, rawText, stripInline(rawText), task.groupValues[3] != " ", depth(task.groupValues[1]))
                     }
                     RULE.matches(line) -> {
                         flushParagraph()
@@ -149,8 +185,8 @@ object WidgetMarkdown {
                         val cells = line.trim().trim('|').split('|').map { stripInline(it) }.filter { it.isNotEmpty() }
                         if (cells.isNotEmpty()) blocks += WidgetBlock.Paragraph(cells.joinToString(" · "))
                     }
-                    line.startsWith(" ") && paragraph.isEmpty() && blocks.lastOrNull().isListLike() -> {
-                        // Continuation of the previous list item.
+                    line.first().isWhitespace() && paragraph.isEmpty() && blocks.lastOrNull().isListLike() -> {
+                        // Continuation of the previous list item: a multiline item (NOTE-4).
                         blocks[blocks.lastIndex] = blocks.last().append(stripInline(sourceLine(line)))
                     }
                     else -> {

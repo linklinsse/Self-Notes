@@ -58,7 +58,8 @@ const components: Components = {
 };
 
 // Addresses first: their postal codes and numbers are never taken for phone numbers.
-const plugins = [remarkGfm, remarkAddresses, remarkPhones];
+// Line breaks too: a checklist item may span several lines (NOTE-4).
+const plugins = [remarkGfm, remarkAddresses, remarkPhones, remarkLineBreaks];
 // Full notes also get heading anchors, the table of contents (NOTE-18) and line breaks as typed (NOTE-2).
 const notePlugins = [remarkGfm, remarkToc, remarkAddresses, remarkPhones, remarkLineBreaks];
 
@@ -134,9 +135,9 @@ const inlineComponents: Components = {
   ...components,
   p: ({ children }) => <>{children}</>,
 };
-const INLINE_ELEMENTS = ['p', 'strong', 'em', 'del', 'code', 'a'];
+const INLINE_ELEMENTS = ['p', 'strong', 'em', 'del', 'code', 'a', 'br'];
 
-/** Inline Markdown only (bold, italics, code, links, strikethrough): used for checklist items. */
+/** Inline Markdown only (bold, italics, code, links, strikethrough, line breaks): used for checklist items. */
 export function InlineMarkdown({ text }: { text: string }) {
   return (
     <Markdown
